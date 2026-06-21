@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import connectSqlite3 from 'connect-sqlite3';
 import express from 'express';
 import session from 'express-session';
 import Database from 'better-sqlite3';
