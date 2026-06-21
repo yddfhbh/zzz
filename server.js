@@ -23,7 +23,12 @@ const dataDir = path.join(__dirname, 'data');
 const publicDir = path.join(__dirname, 'public');
 const dbPath = path.join(dataDir, 'body-tracker.sqlite');
 
+const sessionDir = path.join(dataDir, 'sessions');
+
 fs.mkdirSync(dataDir, { recursive: true });
+fs.mkdirSync(sessionDir, { recursive: true });
+
+const SQLiteStore = connectSqlite3(session);
 
 if (!process.env.ADMIN_PASSWORD) {
   console.warn('[WARN] ADMIN_PASSWORD is not set.');
