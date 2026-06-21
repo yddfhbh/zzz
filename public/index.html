@@ -3,336 +3,567 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Body Tracker</title>
+    <title>Kannyan</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%92%8E%3C/text%3E%3C/svg%3E"
+    />
     <link rel="stylesheet" href="/style.css" />
   </head>
+
   <body>
-    <header class="app-header">
-      <div>
-        <h1 id="siteTitle">Body Tracker</h1>
-        <p class="sub">몸무게 · 인바디 · 운동 기록</p>
-      </div>
+    <nav class="main-tabs">
+  <div class="main-tab-area">
+    <img class="nav-chibi" src="/assets/kannyan-header.gif" alt="" />
 
-      <div class="auth-box">
-        <form id="loginForm" class="login-form">
-          <input
-            id="loginPassword"
-            type="password"
-            placeholder="관리자 비밀번호"
-            autocomplete="current-password"
-          />
-          <button type="submit">로그인</button>
-        </form>
+    <div class="nav-brand-text">
+      <strong id="siteTitle">Kannyan</strong>
+    </div>
+  </div>
 
-        <div id="adminPanel" class="admin-panel admin-only">
-          <span class="admin-badge">관리자</span>
-          <button id="logoutButton" type="button">로그아웃</button>
+  <div class="main-tab-left">
+    <button class="main-tab-button active" data-main-tab="home">Home</button>
+    <button class="main-tab-button" data-main-tab="about">About</button>
+    <button class="main-tab-button" data-main-tab="links">Links</button>
+    <button class="main-tab-button" data-main-tab="projects">Projects</button>
+    <button class="main-tab-button" data-main-tab="fitness">Fitness</button>
+  </div>
+
+  <div class="auth-box">
+    <form id="loginForm" class="login-form">
+      <input
+        id="loginPassword"
+        type="password"
+        placeholder="관리자 비밀번호"
+        autocomplete="current-password"
+      />
+      <button type="submit">로그인</button>
+    </form>
+
+    <div id="adminPanel" class="admin-panel admin-only">
+      <span class="admin-badge">ADMIN</span>
+      <button id="logoutButton" type="button">로그아웃</button>
+    </div>
+  </div>
+</nav>
+
+    <main class="site-main">
+      <!-- HOME -->
+      <section id="home" class="main-page active">
+        <div class="home-grid">
+          <article class="intro-card big">
+            <span class="eyebrow">Welcome</span>
+            <h2>작업물과 기록을 정리하는 공간</h2>
+            <p>
+              디스코드 봇, TETR.IO 카드/리더보드, 체스 도구, 개인 운동 기록 등을
+              한 곳에 모아두는 개인 홈페이지입니다.
+            </p>
+          </article>
+
+          <article class="intro-card">
+            <span class="eyebrow">Current</span>
+            <h3>지금 작업 중</h3>
+            <ul class="clean-list">
+              <li>Kannyan Discord Bot</li>
+              <li>TETR.IO Profile Card</li>
+              <li>Chess Tools</li>
+              <li>Fitness Tracker</li>
+            </ul>
+          </article>
+
+          <article class="intro-card">
+            <span class="eyebrow">Stack</span>
+            <h3>주요 스택</h3>
+            <ul class="tag-list">
+              <li>Node.js</li>
+              <li>Express</li>
+              <li>SQLite</li>
+              <li>Discord.js</li>
+              <li>Canvas/SVG</li>
+            </ul>
+          </article>
         </div>
-      </div>
-    </header>
 
-    <nav class="tabs">
-      <button class="tab-button active" data-tab="dashboard">대시보드</button>
-      <button class="tab-button" data-tab="profile">프로필</button>
-      <button class="tab-button" data-tab="body">몸무게</button>
-      <button class="tab-button" data-tab="inbody">인바디</button>
-      <button class="tab-button" data-tab="workout">운동</button>
-      <button class="tab-button admin-only" data-tab="backup">백업</button>
-    </nav>
+        <section class="quick-section">
+          <h2>Quick View</h2>
+          <div class="quick-grid">
+            <button type="button" class="quick-card main-tab-link" data-main-tab-link="projects">
+              <strong>Projects</strong>
+              <span>만든 것들 보기</span>
+            </button>
 
-    <main>
-      <section id="dashboard" class="tab-page active">
-        <div class="cards">
-          <article class="card">
-            <span class="label">최근 체중</span>
-            <strong id="latestWeight">-</strong>
-          </article>
-          <article class="card">
-            <span class="label">최근 골격근량</span>
-            <strong id="latestMuscle">-</strong>
-          </article>
-          <article class="card">
-            <span class="label">최근 체지방률</span>
-            <strong id="latestBodyFat">-</strong>
-          </article>
-          <article class="card">
-            <span class="label">이번 주 운동</span>
-            <strong id="weekWorkoutCount">-</strong>
-          </article>
-        </div>
+            <button type="button" class="quick-card main-tab-link" data-main-tab-link="fitness">
+              <strong>Fitness</strong>
+              <span>운동 기록 보기</span>
+            </button>
 
-        <div class="chart-grid">
-          <article class="panel">
-            <h2>체중 변화</h2>
-            <canvas id="weightChart" width="800" height="280"></canvas>
-          </article>
-
-          <article class="panel">
-            <h2>체지방률 변화</h2>
-            <canvas id="fatChart" width="800" height="280"></canvas>
-          </article>
-        </div>
-      </section>
-
-      <section id="profile" class="tab-page">
-        <article class="panel">
-          <h2>프로필</h2>
-
-          <div id="profileView" class="profile-view"></div>
-
-          <form id="profileForm" class="form-grid admin-only">
-            <label>
-              키 cm
-              <input name="heightCm" type="number" step="0.1" />
-            </label>
-
-            <label>
-              목표 체중 kg
-              <input name="targetWeightKg" type="number" step="0.1" />
-            </label>
-
-            <label>
-              목표 골격근량 kg
-              <input name="targetMuscleKg" type="number" step="0.1" />
-            </label>
-
-            <label>
-              목표 체지방률 %
-              <input name="targetBodyFatPercent" type="number" step="0.1" />
-            </label>
-
-            <label class="wide">
-              메모
-              <textarea name="memo" rows="3"></textarea>
-            </label>
-
-            <div class="form-actions wide">
-              <button type="submit">프로필 저장</button>
-            </div>
-          </form>
-        </article>
-      </section>
-
-      <section id="body" class="tab-page">
-        <article class="panel">
-          <div class="section-head">
-            <h2>몸무게 기록</h2>
+            <button type="button" class="quick-card main-tab-link" data-main-tab-link="links">
+              <strong>Links</strong>
+              <span>외부 링크 모음</span>
+            </button>
           </div>
-
-          <form id="bodyForm" class="form-grid admin-only">
-            <input name="id" type="hidden" />
-
-            <label>
-              날짜
-              <input name="date" type="date" required />
-            </label>
-
-            <label>
-              체중 kg
-              <input name="weightKg" type="number" step="0.1" required />
-            </label>
-
-            <label class="wide">
-              메모
-              <input name="memo" type="text" />
-            </label>
-
-            <div class="form-actions wide">
-              <button type="submit">저장</button>
-              <button type="button" data-reset-form="bodyForm" class="ghost">취소</button>
-            </div>
-          </form>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th>체중</th>
-                  <th>메모</th>
-                  <th class="admin-only">관리</th>
-                </tr>
-              </thead>
-              <tbody id="bodyTable"></tbody>
-            </table>
-          </div>
-        </article>
+        </section>
       </section>
 
-      <section id="inbody" class="tab-page">
-        <article class="panel">
-          <h2>인바디 기록</h2>
-
-          <form id="inbodyForm" class="form-grid admin-only">
-            <input name="id" type="hidden" />
-
-            <label>
-              날짜
-              <input name="date" type="date" required />
-            </label>
-
-            <label>
-              체중 kg
-              <input name="weightKg" type="number" step="0.1" />
-            </label>
-
-            <label>
-              골격근량 kg
-              <input name="muscleKg" type="number" step="0.1" />
-            </label>
-
-            <label>
-              체지방량 kg
-              <input name="fatKg" type="number" step="0.1" />
-            </label>
-
-            <label>
-              체지방률 %
-              <input name="bodyFatPercent" type="number" step="0.1" />
-            </label>
-
-            <label>
-              BMI
-              <input name="bmi" type="number" step="0.1" />
-            </label>
-
-            <label>
-              기초대사량
-              <input name="bmr" type="number" step="1" />
-            </label>
-
-            <label>
-              내장지방레벨
-              <input name="visceralFatLevel" type="number" step="0.1" />
-            </label>
-
-            <label>
-              인바디 점수
-              <input name="score" type="number" step="1" />
-            </label>
-
-            <label class="wide">
-              메모
-              <input name="memo" type="text" />
-            </label>
-
-            <div class="form-actions wide">
-              <button type="submit">저장</button>
-              <button type="button" data-reset-form="inbodyForm" class="ghost">취소</button>
-            </div>
-          </form>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th>체중</th>
-                  <th>골격근량</th>
-                  <th>체지방률</th>
-                  <th>점수</th>
-                  <th>메모</th>
-                  <th class="admin-only">관리</th>
-                </tr>
-              </thead>
-              <tbody id="inbodyTable"></tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
-      <section id="workout" class="tab-page">
-        <article class="panel">
-          <h2>운동 기록</h2>
-
-          <form id="workoutForm" class="form-grid admin-only">
-            <input name="id" type="hidden" />
-
-            <label>
-              날짜
-              <input name="date" type="date" required />
-            </label>
-
-            <label>
-              부위
-              <input name="part" type="text" placeholder="등, 가슴, 복근..." />
-            </label>
-
-            <label>
-              운동명
-              <input name="name" type="text" required placeholder="풀업, 벤치프레스..." />
-            </label>
-
-            <label>
-              세트
-              <input name="sets" type="number" step="1" />
-            </label>
-
-            <label>
-              횟수
-              <input name="reps" type="number" step="1" />
-            </label>
-
-            <label>
-              중량 kg
-              <input name="weightKg" type="number" step="0.5" />
-            </label>
-
-            <label>
-              시간 min
-              <input name="durationMin" type="number" step="1" />
-            </label>
-
-            <label class="wide">
-              메모
-              <input name="memo" type="text" />
-            </label>
-
-            <div class="form-actions wide">
-              <button type="submit">저장</button>
-              <button type="button" data-reset-form="workoutForm" class="ghost">취소</button>
-            </div>
-          </form>
-
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>날짜</th>
-                  <th>부위</th>
-                  <th>운동명</th>
-                  <th>세트</th>
-                  <th>횟수</th>
-                  <th>중량</th>
-                  <th>시간</th>
-                  <th>메모</th>
-                  <th class="admin-only">관리</th>
-                </tr>
-              </thead>
-              <tbody id="workoutTable"></tbody>
-            </table>
-          </div>
-        </article>
-      </section>
-
-      <section id="backup" class="tab-page admin-only">
-        <article class="panel">
-          <h2>백업 / 복원</h2>
-          <p class="muted">
-            백업은 JSON 파일로 내려받고, 복원은 현재 DB 내용을 지우고 백업 파일 내용으로 교체합니다.
+      <!-- ABOUT -->
+      <section id="about" class="main-page">
+        <article class="content-panel">
+          <span class="eyebrow">About</span>
+          <h2>소개</h2>
+          <p>
+            부산대학교 재학중. 취미로 지피티로 이것저것 만들어보는 중입니다.
           </p>
 
-          <div class="backup-actions">
-            <button id="exportButton" type="button">JSON 백업 다운로드</button>
+          <div class="about-grid">
+            <div class="about-item">
+              <strong>Interest</strong>
+              <span>Chess, TETR.IO, Web Tools, Vibe coding</span>
+            </div>
 
-            <label class="file-label">
-              JSON 백업 복원
-              <input id="importFile" type="file" accept="application/json" />
-            </label>
+            <div class="about-item">
+              <strong>Focus</strong>
+              <span>내가 필요한데 없는거 지피티로 만들기</span>
+            </div>
+
+            <div class="about-item">
+              <strong>Site</strong>
+              <span>Oracle VM + Node.js + SQLite + Nginx</span>
+            </div>
           </div>
         </article>
       </section>
+
+      <!-- PROJECTS -->
+      <section id="projects" class="main-page">
+        <div class="section-title">
+          <span class="eyebrow">Projects</span>
+          <h2>만든 것들</h2>
+        </div>
+
+        <div class="project-grid">
+          <article class="project-card">
+            <div class="project-top">
+              <span class="project-badge">Discord</span>
+              <h3>Kannyan Discord Bot</h3>
+            </div>
+            <p>
+              Gemini/Gemma 기반 채팅, TETR.IO 카드, 리더보드, 체스, 일일 퍼즐 등을
+              처리하는 디스코드 봇.
+            </p>
+            <ul>
+              <li>Gemini/Gemma 응답</li>
+              <li>TETR.IO 프로필 카드</li>
+              <li>체스 이미지 인식 및 대국</li>
+              <li>일일 체스 퍼즐</li>
+            </ul>
+          </article>
+
+          <article class="project-card">
+            <div class="project-top">
+              <span class="project-badge">TETR.IO</span>
+              <h3>TETR.IO Tools</h3>
+            </div>
+            <p>
+              유저 데이터, 리그 통계, 프로필 카드, 캐시, 리더보드 출력을 다루는 도구들.
+            </p>
+            <ul>
+              <li>프로필 카드 SVG/PNG 생성</li>
+              <li>리그 데이터 캐시</li>
+              <li>APM/PPS/VS/Glicko/RD 리더보드</li>
+            </ul>
+          </article>
+
+          <article class="project-card">
+            <div class="project-top">
+              <span class="project-badge">Chess</span>
+              <h3>Chess Tools</h3>
+            </div>
+            <p>
+              체스판 이미지에서 FEN을 추출하고 Stockfish와 연결해서 분석/대국을 지원.
+            </p>
+            <ul>
+              <li>이미지 → FEN</li>
+              <li>Stockfish 연동</li>
+              <li>디스코드 체스 대국</li>
+            </ul>
+          </article>
+
+          <article class="project-card">
+            <div class="project-top">
+              <span class="project-badge">Web</span>
+              <h3>Personal Home + Fitness</h3>
+            </div>
+            <p>
+              개인 홈페이지에 몸무게, 인바디, 운동 기록 기능을 붙인 웹사이트.
+            </p>
+            <ul>
+              <li>Node.js Express</li>
+              <li>SQLite 저장</li>
+              <li>관리자 로그인</li>
+              <li>공개 조회 / 로그인 수정</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+
+      <!-- LINKS -->
+      <section id="links" class="main-page">
+        <div class="section-title">
+          <span class="eyebrow">Links</span>
+          <h2>링크</h2>
+        </div>
+
+        <div class="link-grid">
+          <a class="link-card" href="https://github.com/yddfhbh" target="_blank" rel="noreferrer">
+            <strong>GitHub</strong>
+            <span>코드 저장소</span>
+          </a>
+
+          <a class="link-card" href="https://github.com/yddfhbh/body" target="_blank" rel="noreferrer">
+            <strong>This Site Repo</strong>
+            <span>개인 홈페이지 저장소</span>
+          </a>
+
+          <a class="link-card" href="https://ch.tetr.io/u/hebi_" target="_blank" rel="noreferrer">
+            <strong>TETR.IO</strong>
+            <span>hebi_ 프로필</span>
+          </a>
+
+          <a class="link-card" href="https://lichess.org/" target="_blank" rel="noreferrer">
+            <strong>Lichess</strong>
+            <span>체스 관련 링크</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- FITNESS -->
+      <section id="fitness" class="main-page">
+        <div class="section-title fitness-title">
+          <div>
+            <span class="eyebrow">Fitness</span>
+            <h2>몸무게 · 인바디 · 운동 기록</h2>
+          </div>
+          <p>
+            
+          </p>
+        </div>
+
+        <nav class="fitness-tabs">
+          <button class="tab-button active" data-tab="dashboard">대시보드</button>
+          <button class="tab-button" data-tab="profile">프로필</button>
+          <button class="tab-button" data-tab="body">몸무게</button>
+          <button class="tab-button" data-tab="inbody">인바디</button>
+          <button class="tab-button" data-tab="workout">운동</button>
+          <button class="tab-button admin-only" data-tab="backup">백업</button>
+        </nav>
+
+        <!-- FITNESS DASHBOARD -->
+        <section id="dashboard" class="tab-page active">
+          <div class="cards">
+            <article class="card">
+              <span class="label">최근 체중</span>
+              <strong id="latestWeight">-</strong>
+            </article>
+
+            <article class="card">
+              <span class="label">최근 골격근량</span>
+              <strong id="latestMuscle">-</strong>
+            </article>
+
+            <article class="card">
+              <span class="label">최근 체지방률</span>
+              <strong id="latestBodyFat">-</strong>
+            </article>
+
+            <article class="card">
+              <span class="label">이번 주 운동</span>
+              <strong id="weekWorkoutCount">-</strong>
+            </article>
+          </div>
+
+          <div class="chart-grid">
+            <article class="panel">
+              <h2>체중 변화</h2>
+              <canvas id="weightChart" width="800" height="280"></canvas>
+            </article>
+
+            <article class="panel">
+              <h2>체지방률 변화</h2>
+              <canvas id="fatChart" width="800" height="280"></canvas>
+            </article>
+          </div>
+        </section>
+
+        <!-- PROFILE -->
+        <section id="profile" class="tab-page">
+          <article class="panel">
+            <h2>프로필</h2>
+
+            <div id="profileView" class="profile-view"></div>
+
+            <form id="profileForm" class="form-grid admin-only">
+              <label>
+                키 cm
+                <input name="heightCm" type="number" step="0.1" />
+              </label>
+
+              <label>
+                목표 체중 kg
+                <input name="targetWeightKg" type="number" step="0.1" />
+              </label>
+
+              <label>
+                목표 골격근량 kg
+                <input name="targetMuscleKg" type="number" step="0.1" />
+              </label>
+
+              <label>
+                목표 체지방률 %
+                <input name="targetBodyFatPercent" type="number" step="0.1" />
+              </label>
+
+              <label class="wide">
+                메모
+                <textarea name="memo" rows="3"></textarea>
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">프로필 저장</button>
+              </div>
+            </form>
+          </article>
+        </section>
+
+        <!-- BODY LOGS -->
+        <section id="body" class="tab-page">
+          <article class="panel">
+            <div class="section-head">
+              <h2>몸무게 기록</h2>
+            </div>
+
+            <form id="bodyForm" class="form-grid admin-only">
+              <input name="id" type="hidden" />
+
+              <label>
+                날짜
+                <input name="date" type="date" required />
+              </label>
+
+              <label>
+                체중 kg
+                <input name="weightKg" type="number" step="0.1" required />
+              </label>
+
+              <label class="wide">
+                메모
+                <input name="memo" type="text" />
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">저장</button>
+                <button type="button" data-reset-form="bodyForm" class="ghost">취소</button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    <th>체중</th>
+                    <th>메모</th>
+                    <th class="admin-only">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="bodyTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- INBODY LOGS -->
+        <section id="inbody" class="tab-page">
+          <article class="panel">
+            <h2>인바디 기록</h2>
+
+            <form id="inbodyForm" class="form-grid admin-only">
+              <input name="id" type="hidden" />
+
+              <label>
+                날짜
+                <input name="date" type="date" required />
+              </label>
+
+              <label>
+                체중 kg
+                <input name="weightKg" type="number" step="0.1" />
+              </label>
+
+              <label>
+                골격근량 kg
+                <input name="muscleKg" type="number" step="0.1" />
+              </label>
+
+              <label>
+                체지방량 kg
+                <input name="fatKg" type="number" step="0.1" />
+              </label>
+
+              <label>
+                체지방률 %
+                <input name="bodyFatPercent" type="number" step="0.1" />
+              </label>
+
+              <label>
+                BMI
+                <input name="bmi" type="number" step="0.1" />
+              </label>
+
+              <label>
+                기초대사량
+                <input name="bmr" type="number" step="1" />
+              </label>
+
+              <label>
+                내장지방레벨
+                <input name="visceralFatLevel" type="number" step="0.1" />
+              </label>
+
+              <label>
+                인바디 점수
+                <input name="score" type="number" step="1" />
+              </label>
+
+              <label class="wide">
+                메모
+                <input name="memo" type="text" />
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">저장</button>
+                <button type="button" data-reset-form="inbodyForm" class="ghost">취소</button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    <th>체중</th>
+                    <th>골격근량</th>
+                    <th>체지방률</th>
+                    <th>점수</th>
+                    <th>메모</th>
+                    <th class="admin-only">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="inbodyTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- WORKOUT LOGS -->
+        <section id="workout" class="tab-page">
+          <article class="panel">
+            <h2>운동 기록</h2>
+
+            <form id="workoutForm" class="form-grid admin-only">
+              <input name="id" type="hidden" />
+
+              <label>
+                날짜
+                <input name="date" type="date" required />
+              </label>
+
+              <label>
+                부위
+                <input name="part" type="text" placeholder="등, 가슴, 복근..." />
+              </label>
+
+              <label>
+                운동명
+                <input name="name" type="text" required placeholder="풀업, 벤치프레스..." />
+              </label>
+
+              <label>
+                세트
+                <input name="sets" type="number" step="1" />
+              </label>
+
+              <label>
+                횟수
+                <input name="reps" type="number" step="1" />
+              </label>
+
+              <label>
+                중량 kg
+                <input name="weightKg" type="number" step="0.5" />
+              </label>
+
+              <label>
+                시간 min
+                <input name="durationMin" type="number" step="1" />
+              </label>
+
+              <label class="wide">
+                메모
+                <input name="memo" type="text" />
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">저장</button>
+                <button type="button" data-reset-form="workoutForm" class="ghost">취소</button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>날짜</th>
+                    <th>부위</th>
+                    <th>운동명</th>
+                    <th>세트</th>
+                    <th>횟수</th>
+                    <th>중량</th>
+                    <th>시간</th>
+                    <th>메모</th>
+                    <th class="admin-only">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="workoutTable"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <!-- BACKUP -->
+        <section id="backup" class="tab-page admin-only">
+          <article class="panel">
+            <h2>백업 / 복원</h2>
+            <p class="muted">
+              백업은 JSON 파일로 내려받고, 복원은 현재 DB 내용을 지우고 백업 파일 내용으로 교체합니다.
+            </p>
+
+            <div class="backup-actions">
+              <button id="exportButton" type="button">JSON 백업 다운로드</button>
+
+              <label class="file-label">
+                JSON 백업 복원
+                <input id="importFile" type="file" accept="application/json" />
+              </label>
+            </div>
+          </article>
+        </section>
+      </section>
     </main>
+
+    <footer class="site-footer">
+      <span>© Kannyan</span>
+      <span>Powered by Node.js · SQLite · Oracle VM</span>
+    </footer>
 
     <div id="toast" class="toast"></div>
 

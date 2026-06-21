@@ -14,6 +14,11 @@ function today() {
 
 function showToast(message) {
   const toast = $('#toast');
+
+  if (!toast) {
+    return;
+  }
+
   toast.textContent = message;
   toast.classList.add('show');
 
@@ -81,14 +86,39 @@ function setLoggedIn(loggedIn) {
   document.body.classList.toggle('is-admin', loggedIn);
 }
 
-function switchTab(tabName) {
-  document.querySelectorAll('.tab-button').forEach((button) => {
+function switchMainTab(tabName, options = {}) {
+  const { updateHash = true } = options;
+
+  document.querySelectorAll('.main-tab-button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.mainTab === tabName);
+  });
+
+  document.querySelectorAll('.main-page').forEach((page) => {
+    page.classList.toggle('active', page.id === tabName);
+  });
+
+  if (updateHash) {
+    history.replaceState(null, '', `#${tabName}`);
+  }
+
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth',
+  });
+}
+
+function switchFitnessTab(tabName) {
+  document.querySelectorAll('.fitness-tabs .tab-button').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tabName);
   });
 
-  document.querySelectorAll('.tab-page').forEach((page) => {
+  document.querySelectorAll('#fitness .tab-page').forEach((page) => {
     page.classList.toggle('active', page.id === tabName);
   });
+
+  if (!document.getElementById('fitness')?.classList.contains('active')) {
+    switchMainTab('fitness');
+  }
 }
 
 function sortAscByDate(rows) {
@@ -99,6 +129,10 @@ function sortAscByDate(rows) {
 }
 
 function drawLineChart(canvas, rows, valueKey, suffix = '') {
+  if (!canvas) {
+    return;
+  }
+
   const ctx = canvas.getContext('2d');
   const width = canvas.width;
   const height = canvas.height;
@@ -235,6 +269,10 @@ function renderProfile() {
 
   const form = $('#profileForm');
 
+  if (!form) {
+    return;
+  }
+
   form.heightCm.value = numOrEmpty(profile.heightCm);
   form.targetWeightKg.value = numOrEmpty(profile.targetWeightKg);
   form.targetMuscleKg.value = numOrEmpty(profile.targetMuscleKg);
@@ -300,6 +338,11 @@ function renderWorkoutTable() {
 
 function resetForm(formId) {
   const form = document.getElementById(formId);
+
+  if (!form) {
+    return;
+  }
+
   form.reset();
 
   if (form.id === 'bodyForm') {
@@ -316,12 +359,26 @@ function resetForm(formId) {
 }
 
 function fillForm(form, row) {
+  if (!form || !row) {
+    return;
+  }
+
   for (const element of form.elements) {
     if (!element.name) {
       continue;
     }
 
     element.value = numOrEmpty(row[element.name]);
+  }
+}
+
+function applyInitialHash() {
+  const tabName = location.hash.replace('#', '').trim();
+
+  const validMainTabs = ['home', 'about', 'projects', 'links', 'fitness'];
+
+  if (validMainTabs.includes(tabName)) {
+    switchMainTab(tabName, { updateHash: false });
   }
 }
 
@@ -337,8 +394,8 @@ async function loadAll() {
 
   setLoggedIn(me.loggedIn);
 
-  document.title = me.siteTitle || 'Body Tracker';
-  $('#siteTitle').textContent = me.siteTitle || 'Body Tracker';
+  document.title = 'Kannyan';
+  $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
 
   state.profile = profileData.profile;
   state.bodyLogs = bodyData.bodyLogs;
@@ -354,15 +411,29 @@ async function loadAll() {
   resetForm('bodyForm');
   resetForm('inbodyForm');
   resetForm('workoutForm');
+
+  applyInitialHash();
 }
 
-document.querySelectorAll('.tab-button').forEach((button) => {
+document.querySelectorAll('.main-tab-button').forEach((button) => {
   button.addEventListener('click', () => {
-    switchTab(button.dataset.tab);
+    switchMainTab(button.dataset.mainTab);
   });
 });
 
-$('#loginForm').addEventListener('submit', async (event) => {
+document.querySelectorAll('.main-tab-link').forEach((button) => {
+  button.addEventListener('click', () => {
+    switchMainTab(button.dataset.mainTabLink);
+  });
+});
+
+document.querySelectorAll('.fitness-tabs .tab-button').forEach((button) => {
+  button.addEventListener('click', () => {
+    switchFitnessTab(button.dataset.tab);
+  });
+});
+
+$('#loginForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   try {
@@ -381,7 +452,7 @@ $('#loginForm').addEventListener('submit', async (event) => {
   }
 });
 
-$('#logoutButton').addEventListener('click', async () => {
+$('#logoutButton')?.addEventListener('click', async () => {
   try {
     await api('/api/logout', {
       method: 'POST',
@@ -394,7 +465,7 @@ $('#logoutButton').addEventListener('click', async () => {
   }
 });
 
-$('#profileForm').addEventListener('submit', async (event) => {
+$('#profileForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   try {
@@ -410,7 +481,7 @@ $('#profileForm').addEventListener('submit', async (event) => {
   }
 });
 
-$('#bodyForm').addEventListener('submit', async (event) => {
+$('#bodyForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const form = event.currentTarget;
@@ -433,7 +504,7 @@ $('#bodyForm').addEventListener('submit', async (event) => {
   }
 });
 
-$('#inbodyForm').addEventListener('submit', async (event) => {
+$('#inbodyForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const form = event.currentTarget;
@@ -456,7 +527,7 @@ $('#inbodyForm').addEventListener('submit', async (event) => {
   }
 });
 
-$('#workoutForm').addEventListener('submit', async (event) => {
+$('#workoutForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const form = event.currentTarget;
@@ -481,12 +552,14 @@ $('#workoutForm').addEventListener('submit', async (event) => {
 
 document.body.addEventListener('click', async (event) => {
   const resetButton = event.target.closest('[data-reset-form]');
+
   if (resetButton) {
     resetForm(resetButton.dataset.resetForm);
     return;
   }
 
   const actionButton = event.target.closest('[data-action]');
+
   if (!actionButton) {
     return;
   }
@@ -497,22 +570,29 @@ document.body.addEventListener('click', async (event) => {
     if (type === 'body') {
       const row = state.bodyLogs.find((item) => String(item.id) === String(id));
       fillForm($('#bodyForm'), row);
-      switchTab('body');
+      switchMainTab('fitness');
+      switchFitnessTab('body');
     }
 
     if (type === 'inbody') {
       const row = state.inbodyLogs.find((item) => String(item.id) === String(id));
       fillForm($('#inbodyForm'), row);
-      switchTab('inbody');
+      switchMainTab('fitness');
+      switchFitnessTab('inbody');
     }
 
     if (type === 'workout') {
       const row = state.workoutLogs.find((item) => String(item.id) === String(id));
       fillForm($('#workoutForm'), row);
-      switchTab('workout');
+      switchMainTab('fitness');
+      switchFitnessTab('workout');
     }
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
+
     return;
   }
 
@@ -540,11 +620,11 @@ document.body.addEventListener('click', async (event) => {
   }
 });
 
-$('#exportButton').addEventListener('click', () => {
+$('#exportButton')?.addEventListener('click', () => {
   window.location.href = '/api/export';
 });
 
-$('#importFile').addEventListener('change', async (event) => {
+$('#importFile')?.addEventListener('change', async (event) => {
   const file = event.target.files[0];
 
   if (!file) {
@@ -571,6 +651,10 @@ $('#importFile').addEventListener('change', async (event) => {
   } catch (error) {
     showToast(error.message);
   }
+});
+
+window.addEventListener('hashchange', () => {
+  applyInitialHash();
 });
 
 loadAll().catch((error) => {
