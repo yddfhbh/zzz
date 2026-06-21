@@ -108,6 +108,10 @@ app.use(express.json({ limit: '2mb' }));
 app.use(
   session({
     name: 'bt.sid',
+    store: new SQLiteStore({
+      db: 'sessions.sqlite',
+      dir: sessionDir,
+    }),
     secret: process.env.SESSION_SECRET || 'dev-only-change-this-secret',
     resave: false,
     saveUninitialized: false,
