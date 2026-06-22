@@ -49,6 +49,77 @@ function numOrEmpty(value) {
   return value === null || value === undefined ? '' : value;
 }
 
+function splitGraphemes(text) {
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter('ko', {
+      granularity: 'grapheme',
+    });
+
+    return [...segmenter.segment(text)].map(({ segment }) => segment);
+  }
+
+  return Array.from(text);
+}
+
+function initHeroTyping() {
+  const heading = $('.typing-heading');
+  const title = heading?.querySelector('.typing-title');
+  const caret = heading?.querySelector('.typing-caret');
+
+  if (!heading || !title || !caret) {
+    return;
+  }
+
+  const fullText = title.textContent ?? '';
+  const shouldUseStatic =
+    window.matchMedia('(max-width: 640px)').matches ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const renderStatic = () => {
+    heading.classList.remove('is-typing');
+    heading.classList.add('is-static');
+    title.textContent = fullText;
+  };
+
+  if (shouldUseStatic) {
+    renderStatic();
+    return;
+  }
+
+  const titleWidth = title.scrollWidth;
+  const caretWidth = caret.getBoundingClientRect().width || 0;
+  const gapWidth = 6;
+
+  if (titleWidth + caretWidth + gapWidth > heading.clientWidth) {
+    renderStatic();
+    return;
+  }
+
+  const graphemes = splitGraphemes(fullText);
+  let index = 0;
+
+  if (graphemes.length === 0) {
+    renderStatic();
+    return;
+  }
+
+  heading.classList.remove('is-static');
+  heading.classList.add('is-typing');
+  title.textContent = '';
+
+  const typeNext = () => {
+    title.textContent += graphemes[index];
+    index += 1;
+
+    if (index < graphemes.length) {
+      const nextDelay = graphemes[index - 1] === ' ' ? 45 : 95;
+      window.setTimeout(typeNext, nextDelay);
+    }
+  };
+
+  window.setTimeout(typeNext, 200);
+}
+
 async function api(path, options = {}) {
   const { method = 'GET', body } = options;
 
@@ -656,6 +727,8 @@ $('#importFile')?.addEventListener('change', async (event) => {
 window.addEventListener('hashchange', () => {
   applyInitialHash();
 });
+
+initHeroTyping();
 
 loadAll().catch((error) => {
   console.error(error);

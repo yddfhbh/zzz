@@ -1,3 +1,8 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Cormorant+SC:wght@700&family=Gowun+Dodum&family=Hahmlet:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&family=Marcellus+SC&family=Noto+Serif+KR:wght@600;700;900&family=Raleway:wght@300;500;600;700;800;900&family=Uncial+Antiqua&display=swap");
+
+
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
+
 :root {
   --bg: #17162f;
   --bg-2: #25245a;
@@ -36,22 +41,24 @@ html {
 }
 
 body {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  isolation: isolate;
+
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 12% 4%, rgba(139, 140, 255, 0.32), transparent 32rem),
-    radial-gradient(circle at 88% 8%, rgba(55, 53, 132, 0.46), transparent 30rem),
-    radial-gradient(circle at 48% 100%, rgba(126, 231, 200, 0.12), transparent 34rem),
-    linear-gradient(180deg, #11102a 0%, #25245a 42%, #373584 100%);
+  background: #11102a;
   color: var(--text);
-  font-family:
+    font-family:
+    "Pretendard",
+    "Noto Sans KR",
     Inter,
     ui-sans-serif,
     system-ui,
     -apple-system,
     BlinkMacSystemFont,
     "Segoe UI",
-    "Noto Sans KR",
     sans-serif;
 }
 
@@ -59,12 +66,33 @@ body::before {
   content: "";
   position: fixed;
   inset: 0;
+  z-index: -1;
   pointer-events: none;
-  background-image:
-    linear-gradient(rgba(237, 238, 254, 0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(237, 238, 254, 0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.74), transparent 82%);
+
+  background:
+    linear-gradient(
+      rgba(8, 7, 28, 0.04),
+      rgba(8, 7, 28, 0.22)
+    ),
+    radial-gradient(circle at 20% 0%, rgba(139, 140, 255, 0.18), transparent 32rem),
+    radial-gradient(circle at 80% 100%, rgba(55, 53, 132, 0.22), transparent 32rem),
+    url("/assets/site-bg.png");
+
+  background-size:
+    auto,
+    auto,
+    auto,
+    cover;
+
+  background-position:
+    center,
+    center,
+    center,
+    center center;
+
+  background-repeat: no-repeat;
+  transform: translateZ(0);
+  will-change: transform;
 }
 
 button,
@@ -153,7 +181,9 @@ h3 {
 
 p {
   color: var(--muted);
-  line-height: 1.7;
+  line-height: 1.75;
+  font-weight: 500;
+  letter-spacing: -0.015em;
 }
 
 .site-header {
@@ -194,23 +224,78 @@ p {
 
 .hero-kicker::before,
 .eyebrow::before {
-  content: "";
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: #7ee7c8;
-  box-shadow: 0 0 20px rgba(126, 231, 200, 0.72);
+  content: "💎";
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+
+  font-size: 15px;
+  line-height: 1;
+  letter-spacing: 0;
+  text-transform: none;
+
+  transform: translateY(-1px);
+  filter:
+    drop-shadow(0 0 4px rgba(125, 211, 252, 0.55))
+    drop-shadow(0 0 8px rgba(196, 181, 253, 0.28));
 }
 
 #siteTitle {
+  position: relative;
   margin: 0;
-  color: #ffffff;
+
+  font-family:
+    "Marcellus SC",
+    "Cinzel",
+    "Raleway",
+    serif;
   font-size: 60px;
-  font-weight: 1000;
+  font-weight: 400;
   line-height: 1;
-  letter-spacing: -0.05em;
+  letter-spacing: -0.035em;
   white-space: nowrap;
-  text-shadow: 0 0 18px rgba(196, 181, 253, 0.32);
+
+  color: transparent;
+  background:
+    linear-gradient(
+      105deg,
+      #d9d2ff 0%,
+      #ffffff 24%,
+      #f4efff 42%,
+      #bfc4ff 64%,
+      #ffffff 78%,
+      #d8d0ff 100%
+    );
+  background-size: 230% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+
+  text-shadow:
+    0 0 10px rgba(255, 255, 255, 0.32),
+    0 0 22px rgba(196, 181, 253, 0.44),
+    0 0 44px rgba(139, 140, 255, 0.24);
+
+  animation: titleGloss 5.5s ease-in-out infinite;
+}
+
+@keyframes titleGloss {
+  0% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+
+  45% {
+    background-position: 100% 50%;
+    filter: drop-shadow(0 0 8px rgba(196, 181, 253, 0.28));
+  }
+
+  100% {
+    background-position: 0% 50%;
+    filter: drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
 }
 
 .hero-desc {
@@ -255,13 +340,13 @@ p {
 .login-form input {
   width: 155px;
   min-width: 0;
-  height: 36px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 12px;
 
   color: #edeefe;
-  border: 1px solid rgba(196, 181, 253, 0.34);
-  border-radius: 12px;
-  background: rgba(49, 47, 112, 0.72);
+  border: 1px solid rgba(237, 238, 254, 0.12);
+  border-radius: 6px;
+  background: rgba(24, 23, 52, 0.46);
 }
 
 .login-form input::placeholder {
@@ -269,21 +354,22 @@ p {
 }
 
 .login-form button {
-  height: 36px;
-  padding: 0 16px;
+  height: 34px;
+  padding: 0 15px;
 
-  color: #11102a;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 12px;
-  background: linear-gradient(135deg, #8b8cff, #c4b5fd);
-  box-shadow: 0 8px 18px rgba(139, 140, 255, 0.26);
+  color: #edeefe;
+  border: 1px solid rgba(237, 238, 254, 0.14);
+  border-radius: 6px;
+  background: rgba(139, 140, 255, 0.34);
+  box-shadow: none;
 
   white-space: nowrap;
   font-size: 14px;
 }
 
 .login-form button:hover {
-  background: linear-gradient(135deg, #9b9cff, #ddd6fe);
+  color: #ffffff;
+  background: rgba(196, 181, 253, 0.44);
   filter: none;
 }
 
@@ -299,25 +385,25 @@ p {
   align-items: center;
   gap: 6px;
 
-  padding: 5px;
-  border-radius: 16px;
-  background: rgba(20, 19, 52, 0.72);
-  box-shadow: 0 10px 24px rgba(7, 6, 28, 0.18);
+  padding: 4px;
+  border-radius: 8px;
+  background: rgba(12, 12, 30, 0.44);
+  box-shadow: 0 8px 20px rgba(7, 6, 28, 0.16);
 }
 
 .main-tabs .login-form input {
   width: 155px;
-  height: 36px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 12px;
   font-size: 14px;
-  border-radius: 12px;
+  border-radius: 6px;
 }
 
 .main-tabs .login-form button {
-  height: 36px;
-  padding: 0 16px;
+  height: 34px;
+  padding: 0 15px;
   font-size: 14px;
-  border-radius: 12px;
+  border-radius: 6px;
 }
 
 .admin-panel {
@@ -389,6 +475,7 @@ p {
   display: grid;
   gap: 3px;
   min-width: 0;
+  transform: translateY(7px);
 }
 
 .nav-brand-text span {
@@ -425,10 +512,14 @@ p {
   border-radius: 0;
   box-shadow: none;
 
+  font-family:
+    "Raleway",
+    "Pretendard",
+    sans-serif;
   font-size: 20px;
-  font-weight: 900;
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
   white-space: nowrap;
 
   text-shadow: 0 0 18px rgba(139, 140, 255, 0.18);
@@ -482,9 +573,11 @@ p {
 }
 
 .site-main {
+  flex: 1 0 auto;
+  width: 100%;
   max-width: var(--max);
   margin: 0 auto;
-  padding: 28px 24px 80px;
+  padding: 28px 24px 40px;
 }
 
 .main-page,
@@ -512,13 +605,12 @@ p {
 .profile-item {
   position: relative;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  border: 1px solid rgba(237, 238, 254, 0.10);
+  border-radius: 8px;
   background:
-    linear-gradient(135deg, rgba(139, 140, 255, 0.09), transparent 44%),
-    rgba(35, 34, 78, 0.78);
-  box-shadow: var(--shadow);
-  backdrop-filter: blur(14px);
+    linear-gradient(135deg, rgba(139, 140, 255, 0.055), transparent 52%),
+    rgba(18, 18, 42, 0.30);
+  box-shadow: 0 14px 38px rgba(7, 6, 28, 0.16);
 }
 
 .intro-card::before,
@@ -526,11 +618,7 @@ p {
 .project-card::before,
 .link-card::before,
 .panel::before {
-  content: "";
-  position: absolute;
-  inset: 0 0 auto;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.55), transparent);
+  display: none;
 }
 
 .intro-card {
@@ -538,23 +626,136 @@ p {
 }
 
 .intro-card.big {
-  grid-row: span 2;
-  min-height: 310px;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: center;
+}
+
+.hero-card {
+  isolation: isolate;
+}
+
+.intro-card.big .eyebrow {
+  margin-top: 0;
 }
 
 .intro-card.big h2 {
-  max-width: 700px;
+  max-width: 720px;
   margin: 14px 0 12px;
+  font-family:
+    "Hahmlet",
+    "Pretendard",
+    serif;
   font-size: clamp(30px, 5vw, 54px);
-  line-height: 1.04;
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.055em;
+  text-shadow:
+    0 0 12px rgba(255, 255, 255, 0.18),
+    0 0 26px rgba(196, 181, 253, 0.18);
 }
+
+.typing-heading {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 6px;
+  row-gap: 4px;
+  min-height: 1.1em;
+  max-width: 100%;
+  overflow: visible;
+}
+
+.typing-title {
+  display: inline-block;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.typing-caret {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 3px;
+  height: 0.9em;
+  transform: translateY(0.14em);
+  border-radius: 999px;
+  background: rgba(237, 238, 254, 0.9);
+  opacity: 0;
+  animation: caretBlink 0.75s step-end infinite;
+}
+
+.typing-heading.is-typing .typing-caret {
+  opacity: 1;
+}
+
+.typing-heading.is-static .typing-title {
+  white-space: normal;
+}
+
+.typing-heading.is-static .typing-caret {
+  display: none;
+}
+
+.hero-mini-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.hero-mini-stats span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 7px 10px;
+
+  border: 1px solid rgba(237, 238, 254, 0.10);
+  border-radius: 999px;
+
+  color: rgba(237, 238, 254, 0.84);
+  background: rgba(2, 6, 23, 0.22);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+@keyframes caretBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
 
 .intro-card h3 {
   margin: 12px 0 14px;
   font-size: 23px;
+}
+
+.intro-card h3,
+.quick-card strong,
+.project-card h3,
+.content-panel h2,
+.section-title h2,
+.fitness-title h2,
+.panel h2 {
+  font-family:
+    "Hahmlet",
+    "Pretendard",
+    serif;
+  font-weight: 700;
+  letter-spacing: -0.045em;
+}
+
+.eyebrow,
+.project-badge,
+.hero-mini-stats span,
+.tag-list li,
+.admin-badge,
+.card .label {
+  font-family:
+    "JetBrains Mono",
+    "Pretendard",
+    monospace;
 }
 
 .clean-list,
@@ -613,24 +814,50 @@ p {
 
 .quick-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1.2fr 1fr 0.9fr;
   gap: 14px;
 }
 
 .quick-card {
+  position: relative;
   display: grid;
   gap: 8px;
   justify-items: start;
-  min-height: 120px;
-  padding: 20px;
+  min-height: 116px;
+  padding: 20px 20px 20px 24px;
   text-align: left;
   color: var(--text);
+
   background:
-    linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(56, 189, 248, 0.06)),
-    rgba(15, 23, 42, 0.78);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+    linear-gradient(135deg, rgba(139, 140, 255, 0.06), rgba(2, 6, 23, 0.05)),
+    rgba(18, 20, 42, 0.30);
+
+  border: 1px solid rgba(237, 238, 254, 0.10);
+  border-radius: 6px;
+  box-shadow: 0 12px 34px rgba(7, 6, 28, 0.14);
+}
+
+.quick-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(196, 181, 253, 0.72);
+}
+
+.quick-card:nth-child(1)::before {
+  background: #c4b5fd;
+}
+
+.quick-card:nth-child(2)::before {
+  background: #7ee7c8;
+}
+
+.quick-card:nth-child(3)::before {
+  background: #8b8cff;
 }
 
 .quick-card strong {
@@ -1013,15 +1240,28 @@ body.is-admin .login-form {
 }
 
 .site-footer {
+  flex-shrink: 0;
+
   display: flex;
   justify-content: space-between;
   gap: 14px;
+
+  width: 100%;
   max-width: var(--max);
   margin: 0 auto;
   padding: 24px;
+
   color: var(--muted);
   border-top: 1px solid var(--line);
   font-size: 14px;
+
+    font-family:
+    "Raleway",
+    "Pretendard",
+    sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.01em;
+
 }
 
 .toast {
@@ -1156,5 +1396,18 @@ body.is-admin .login-form {
 
   canvas {
     height: 240px;
+  }
+ 
+  .typing-heading {
+    display: block;
+  }
+
+  .typing-title {
+    white-space: normal;
+    max-width: 100%;
+  }
+
+  .typing-caret {
+    display: none;
   }
 }
