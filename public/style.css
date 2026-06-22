@@ -984,14 +984,9 @@ p {
 }
 
 .fitness-title {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 420px);
-  gap: 18px;
-  align-items: end;
-}
-
-.fitness-title p {
-  margin: 0 0 20px;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
 }
 
 .fitness-tabs {
@@ -1295,8 +1290,7 @@ body.is-admin .login-form {
 
   .home-grid,
   .project-grid,
-  .chart-grid,
-  .fitness-title {
+  .chart-grid {
     grid-template-columns: 1fr;
   }
 

@@ -3,7 +3,6 @@ const $ = (selector) => document.querySelector(selector);
 const state = {
   loggedIn: false,
   profile: null,
-  bodyLogs: [],
   inbodyLogs: [],
   workoutLogs: [],
 };
@@ -47,6 +46,26 @@ function fmt(value, suffix = '') {
 
 function numOrEmpty(value) {
   return value === null || value === undefined ? '' : value;
+}
+
+function parsePositiveNumber(value) {
+  if (value === '' || value === null || value === undefined) {
+    return null;
+  }
+
+  const number = Number(value);
+
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
+function calculateBmi(weightKg, heightCm) {
+  if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm) || weightKg <= 0 || heightCm <= 0) {
+    return null;
+  }
+
+  const heightM = heightCm / 100;
+
+  return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
 }
 
 function splitGraphemes(text) {
@@ -298,8 +317,8 @@ function drawLineChart(canvas, rows, valueKey, suffix = '') {
 }
 
 function renderDashboard(summary) {
-  $('#latestWeight').textContent = summary.latestBody
-    ? fmt(summary.latestBody.weightKg, 'kg')
+  $('#latestWeight').textContent = summary.latestInbody
+    ? fmt(summary.latestInbody.weightKg, 'kg')
     : '-';
 
   $('#latestMuscle').textContent = summary.latestInbody
@@ -312,12 +331,27 @@ function renderDashboard(summary) {
 
   $('#weekWorkoutCount').textContent = `${summary.workoutCountThisWeek ?? 0}회`;
 
-  drawLineChart($('#weightChart'), state.bodyLogs, 'weightKg', 'kg');
+  drawLineChart($('#weightChart'), state.inbodyLogs, 'weightKg', 'kg');
   drawLineChart($('#fatChart'), state.inbodyLogs, 'bodyFatPercent', '%');
+}
+
+function getEntryTimestamp(row) {
+  return String(row?.createdAt || row?.updatedAt || row?.date || '');
+}
+
+function pickLatestRow(rows) {
+  return rows.reduce((latest, row) => {
+    if (!latest) {
+      return row;
+    }
+
+    return getEntryTimestamp(row) > getEntryTimestamp(latest) ? row : latest;
+  }, null);
 }
 
 function renderProfile() {
   const profile = state.profile || {};
+  const latestInbody = pickLatestRow(state.inbodyLogs);
 
   $('#profileView').innerHTML = `
     <div class="profile-item">
@@ -325,16 +359,16 @@ function renderProfile() {
       <strong>${esc(fmt(profile.heightCm, 'cm'))}</strong>
     </div>
     <div class="profile-item">
-      <span>목표 체중</span>
-      <strong>${esc(fmt(profile.targetWeightKg, 'kg'))}</strong>
+      <span>최근 체중</span>
+      <strong>${esc(fmt(latestInbody?.weightKg, 'kg'))}</strong>
     </div>
     <div class="profile-item">
-      <span>목표 골격근량</span>
-      <strong>${esc(fmt(profile.targetMuscleKg, 'kg'))}</strong>
+      <span>최근 골격근량</span>
+      <strong>${esc(fmt(latestInbody?.muscleKg, 'kg'))}</strong>
     </div>
     <div class="profile-item">
-      <span>목표 체지방률</span>
-      <strong>${esc(fmt(profile.targetBodyFatPercent, '%'))}</strong>
+      <span>최근 체지방률</span>
+      <strong>${esc(fmt(latestInbody?.bodyFatPercent, '%'))}</strong>
     </div>
   `;
 
@@ -345,26 +379,7 @@ function renderProfile() {
   }
 
   form.heightCm.value = numOrEmpty(profile.heightCm);
-  form.targetWeightKg.value = numOrEmpty(profile.targetWeightKg);
-  form.targetMuscleKg.value = numOrEmpty(profile.targetMuscleKg);
-  form.targetBodyFatPercent.value = numOrEmpty(profile.targetBodyFatPercent);
   form.memo.value = profile.memo || '';
-}
-
-function renderBodyTable() {
-  $('#bodyTable').innerHTML = state.bodyLogs
-    .map((row) => `
-      <tr>
-        <td>${esc(row.date)}</td>
-        <td>${esc(fmt(row.weightKg, 'kg'))}</td>
-        <td>${esc(row.memo)}</td>
-        <td class="actions admin-only">
-          <button type="button" data-action="edit" data-type="body" data-id="${row.id}">수정</button>
-          <button type="button" class="danger" data-action="delete" data-type="body" data-id="${row.id}">삭제</button>
-        </td>
-      </tr>
-    `)
-    .join('');
 }
 
 function renderInbodyTable() {
@@ -375,7 +390,7 @@ function renderInbodyTable() {
         <td>${esc(fmt(row.weightKg, 'kg'))}</td>
         <td>${esc(fmt(row.muscleKg, 'kg'))}</td>
         <td>${esc(fmt(row.bodyFatPercent, '%'))}</td>
-        <td>${esc(fmt(row.score, '점'))}</td>
+        <td>${esc(fmt(row.bmi))}</td>
         <td>${esc(row.memo)}</td>
         <td class="actions admin-only">
           <button type="button" data-action="edit" data-type="inbody" data-id="${row.id}">수정</button>
@@ -416,12 +431,9 @@ function resetForm(formId) {
 
   form.reset();
 
-  if (form.id === 'bodyForm') {
-    form.date.value = today();
-  }
-
   if (form.id === 'inbodyForm') {
     form.date.value = today();
+    updateInbodyBmi();
   }
 
   if (form.id === 'workoutForm') {
@@ -441,6 +453,34 @@ function fillForm(form, row) {
 
     element.value = numOrEmpty(row[element.name]);
   }
+
+  if (form.id === 'inbodyForm') {
+    updateInbodyBmi();
+  }
+}
+
+function updateInbodyBmi() {
+  const form = $('#inbodyForm');
+  const bmiField = form?.bmi;
+  const heightField = form?.heightCm;
+
+  if (!form || !bmiField) {
+    return;
+  }
+
+  const profileHeightValue = $('#profileForm')?.heightCm?.value.trim();
+  const resolvedHeightValue = profileHeightValue || state.profile?.heightCm || '';
+  const heightCm = parsePositiveNumber(resolvedHeightValue);
+  const weightKg = parsePositiveNumber(form.weightKg?.value);
+  const bmi = calculateBmi(weightKg, heightCm);
+
+  if (heightField) {
+    heightField.value = numOrEmpty(resolvedHeightValue);
+  }
+
+  if (bmi !== null) {
+    bmiField.value = bmi.toFixed(1);
+  }
 }
 
 function applyInitialHash() {
@@ -454,10 +494,9 @@ function applyInitialHash() {
 }
 
 async function loadAll() {
-  const [me, profileData, bodyData, inbodyData, workoutData, summaryData] = await Promise.all([
+  const [me, profileData, inbodyData, workoutData, summaryData] = await Promise.all([
     api('/api/me'),
     api('/api/profile'),
-    api('/api/body-logs'),
     api('/api/inbody-logs'),
     api('/api/workout-logs'),
     api('/api/summary'),
@@ -469,17 +508,14 @@ async function loadAll() {
   $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
 
   state.profile = profileData.profile;
-  state.bodyLogs = bodyData.bodyLogs;
   state.inbodyLogs = inbodyData.inbodyLogs;
   state.workoutLogs = workoutData.workoutLogs;
 
   renderProfile();
-  renderBodyTable();
   renderInbodyTable();
   renderWorkoutTable();
   renderDashboard(summaryData.summary);
 
-  resetForm('bodyForm');
   resetForm('inbodyForm');
   resetForm('workoutForm');
 
@@ -552,29 +588,6 @@ $('#profileForm')?.addEventListener('submit', async (event) => {
   }
 });
 
-$('#bodyForm')?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const form = event.currentTarget;
-  const data = getFormData(form);
-  const id = data.id;
-
-  delete data.id;
-
-  try {
-    await api(id ? `/api/body-logs/${id}` : '/api/body-logs', {
-      method: id ? 'PUT' : 'POST',
-      body: data,
-    });
-
-    showToast('몸무게 기록 저장 완료');
-    resetForm('bodyForm');
-    await loadAll();
-  } catch (error) {
-    showToast(error.message);
-  }
-});
-
 $('#inbodyForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -638,13 +651,6 @@ document.body.addEventListener('click', async (event) => {
   const { action, type, id } = actionButton.dataset;
 
   if (action === 'edit') {
-    if (type === 'body') {
-      const row = state.bodyLogs.find((item) => String(item.id) === String(id));
-      fillForm($('#bodyForm'), row);
-      switchMainTab('fitness');
-      switchFitnessTab('body');
-    }
-
     if (type === 'inbody') {
       const row = state.inbodyLogs.find((item) => String(item.id) === String(id));
       fillForm($('#inbodyForm'), row);
@@ -673,7 +679,6 @@ document.body.addEventListener('click', async (event) => {
     }
 
     const endpointByType = {
-      body: `/api/body-logs/${id}`,
       inbody: `/api/inbody-logs/${id}`,
       workout: `/api/workout-logs/${id}`,
     };
@@ -688,6 +693,22 @@ document.body.addEventListener('click', async (event) => {
     } catch (error) {
       showToast(error.message);
     }
+  }
+});
+
+document.body.addEventListener('input', (event) => {
+  const target = event.target;
+
+  if (!target || typeof target.closest !== 'function') {
+    return;
+  }
+
+  if (target.name === 'heightCm' && target.closest('#profileForm')) {
+    updateInbodyBmi();
+  }
+
+  if (target.name === 'weightKg' && target.closest('#inbodyForm')) {
+    updateInbodyBmi();
   }
 });
 

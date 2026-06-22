@@ -14,6 +14,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.disable('x-powered-by');
 
 const PORT = Number(process.env.PORT || 3100);
 const isProduction = process.env.NODE_ENV === 'production';
@@ -30,12 +31,24 @@ fs.mkdirSync(sessionDir, { recursive: true });
 
 const SQLiteStore = connectSqlite3(session);
 
-if (!process.env.ADMIN_PASSWORD) {
-  console.warn('[WARN] ADMIN_PASSWORD is not set.');
+const adminPassword = process.env.ADMIN_PASSWORD || '';
+
+if (isProduction && !adminPassword) {
+  throw new Error('ADMIN_PASSWORD must be set in production.');
+}
+
+if (!adminPassword) {
+  console.warn('[WARN] ADMIN_PASSWORD is not set. Login will be unavailable until it is configured.');
+}
+
+const sessionSecret = process.env.SESSION_SECRET || (isProduction ? null : crypto.randomBytes(32).toString('hex'));
+
+if (isProduction && !sessionSecret) {
+  throw new Error('SESSION_SECRET must be set in production.');
 }
 
 if (!process.env.SESSION_SECRET) {
-  console.warn('[WARN] SESSION_SECRET is not set. Set a long random string in .env.');
+  console.warn('[WARN] SESSION_SECRET is not set. Using a random development secret.');
 }
 
 const db = new Database(dbPath);
@@ -47,9 +60,6 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     height_cm REAL,
-    target_weight_kg REAL,
-    target_muscle_kg REAL,
-    target_body_fat_percent REAL,
     memo TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
@@ -98,13 +108,45 @@ db.prepare(`
   INSERT OR IGNORE INTO profile (
     id,
     height_cm,
-    target_weight_kg,
-    target_muscle_kg,
-    target_body_fat_percent,
     memo
-  )
-  VALUES (1, NULL, NULL, NULL, NULL, '')
+  ) VALUES (1, NULL, '')
 `).run();
+
+function migrateProfileTable() {
+  const profileColumns = db.prepare('PRAGMA table_info(profile)').all().map((row) => row.name);
+  const legacyColumns = [
+    'target_weight_kg',
+    'target_muscle_kg',
+    'target_body_fat_percent',
+  ];
+
+  if (!legacyColumns.some((columnName) => profileColumns.includes(columnName))) {
+    return;
+  }
+
+  db.exec(`
+    CREATE TABLE profile_new (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      height_cm REAL,
+      memo TEXT NOT NULL DEFAULT '',
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    INSERT INTO profile_new (id, height_cm, memo, updated_at)
+    SELECT
+      id,
+      height_cm,
+      COALESCE(memo, ''),
+      COALESCE(updated_at, CURRENT_TIMESTAMP)
+    FROM profile
+    WHERE id = 1;
+
+    DROP TABLE profile;
+    ALTER TABLE profile_new RENAME TO profile;
+  `);
+}
+
+migrateProfileTable();
 
 app.set('trust proxy', 1);
 
@@ -117,7 +159,7 @@ app.use(
       db: 'sessions.sqlite',
       dir: sessionDir,
     }),
-    secret: process.env.SESSION_SECRET || 'dev-only-change-this-secret',
+    secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
     cookie: {
@@ -128,6 +170,36 @@ app.use(
     },
   }),
 );
+
+app.use((req, res, next) => {
+  res.setHeader(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "base-uri 'self'",
+      "object-src 'none'",
+      "frame-ancestors 'none'",
+      "form-action 'self'",
+      "connect-src 'self'",
+      "img-src 'self' data:",
+      "script-src 'self'",
+      "style-src 'self'",
+      "font-src 'self'",
+      "media-src 'self'",
+    ].join('; '),
+  );
+  res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+
+  if (req.path.startsWith('/api/')) {
+    res.setHeader('Cache-Control', 'no-store');
+  }
+
+  next();
+});
 
 function safeEqualText(a, b) {
   const left = Buffer.from(String(a ?? ''), 'utf8');
@@ -231,6 +303,26 @@ function optionalInteger(value) {
   return Math.trunc(number);
 }
 
+function calculateBmi(weightKg, heightCm) {
+  if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm) || weightKg <= 0 || heightCm <= 0) {
+    return null;
+  }
+
+  const heightM = heightCm / 100;
+
+  return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
+}
+
+function getProfileHeightCm() {
+  const profile = db.prepare(`
+    SELECT height_cm AS heightCm
+    FROM profile
+    WHERE id = 1
+  `).get();
+
+  return optionalNumber(profile?.heightCm);
+}
+
 function getIdParam(req) {
   const id = Number(req.params.id);
 
@@ -245,9 +337,12 @@ function getIdParam(req) {
 
 function handleRoute(fn) {
   return (req, res, next) => {
-    try {
-      return fn(req, res, next);
-    } catch (error) {
+    const sendError = (error) => {
+      if (res.headersSent) {
+        next(error);
+        return;
+      }
+
       const status = error.status || 500;
 
       if (status >= 500) {
@@ -259,8 +354,117 @@ function handleRoute(fn) {
         error: status >= 500 ? 'SERVER_ERROR' : 'BAD_REQUEST',
         message: error.message || '서버 오류가 발생했습니다.',
       });
+    };
+
+    try {
+      const result = fn(req, res, next);
+
+      if (result && typeof result.then === 'function') {
+        return result.catch(sendError);
+      }
+
+      return result;
+    } catch (error) {
+      return sendError(error);
     }
   };
+}
+
+function regenerateSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.regenerate((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+function saveSession(req) {
+  return new Promise((resolve, reject) => {
+    req.session.save((error) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+
+      resolve();
+    });
+  });
+}
+
+const loginAttempts = new Map();
+const LOGIN_ATTEMPT_LIMIT = 5;
+const LOGIN_ATTEMPT_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_ATTEMPT_BLOCK_MS = 15 * 60 * 1000;
+const LOGIN_ATTEMPT_PURGE_MS = 60 * 60 * 1000;
+
+function getLoginAttemptKey(req) {
+  return req.ip || 'unknown';
+}
+
+function pruneLoginAttempts(now = Date.now()) {
+  for (const [key, state] of loginAttempts) {
+    if (now - state.lastSeenAt > LOGIN_ATTEMPT_PURGE_MS) {
+      loginAttempts.delete(key);
+    }
+  }
+}
+
+function getLoginAttemptState(req) {
+  const key = getLoginAttemptKey(req);
+  const now = Date.now();
+  let state = loginAttempts.get(key);
+
+  if (!state) {
+    state = {
+      attempts: [],
+      blockedUntil: 0,
+      lastSeenAt: now,
+    };
+    loginAttempts.set(key, state);
+    return state;
+  }
+
+  state.attempts = state.attempts.filter((timestamp) => now - timestamp <= LOGIN_ATTEMPT_WINDOW_MS);
+
+  if (state.blockedUntil <= now) {
+    state.blockedUntil = 0;
+  }
+
+  state.lastSeenAt = now;
+  pruneLoginAttempts(now);
+  return state;
+}
+
+function getLoginBlockedState(req) {
+  const state = getLoginAttemptState(req);
+  return state.blockedUntil > Date.now() ? state : null;
+}
+
+function recordLoginFailure(req) {
+  const now = Date.now();
+  const state = getLoginAttemptState(req);
+
+  state.attempts.push(now);
+  state.attempts = state.attempts.filter((timestamp) => now - timestamp <= LOGIN_ATTEMPT_WINDOW_MS);
+
+  if (state.attempts.length >= LOGIN_ATTEMPT_LIMIT) {
+    state.blockedUntil = now + LOGIN_ATTEMPT_BLOCK_MS;
+    state.attempts = [];
+  }
+
+  state.lastSeenAt = now;
+  pruneLoginAttempts(now);
+
+  return state;
+}
+
+function clearLoginAttempts(req) {
+  loginAttempts.delete(getLoginAttemptKey(req));
 }
 
 const bodyLogSelect = `
@@ -319,20 +523,36 @@ app.get('/api/me', (req, res) => {
 app.post(
   '/api/login',
   requireJson,
-  handleRoute((req, res) => {
-    const { password } = req.body;
+  handleRoute(async (req, res) => {
+    const blockedState = getLoginBlockedState(req);
 
-    const adminPassword = process.env.ADMIN_PASSWORD || '';
-
-    if (!adminPassword || !safeEqualText(password, adminPassword)) {
-      return res.status(401).json({
+    if (blockedState) {
+      return res.status(429).json({
         ok: false,
-        error: 'INVALID_PASSWORD',
-        message: '비밀번호가 틀렸습니다.',
+        error: 'LOGIN_RATE_LIMITED',
+        message: '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.',
       });
     }
 
+    const { password } = req.body;
+
+    if (!adminPassword || !safeEqualText(password, adminPassword)) {
+      const failureState = recordLoginFailure(req);
+      const isBlocked = failureState.blockedUntil > Date.now();
+
+      return res.status(isBlocked ? 429 : 401).json({
+        ok: false,
+        error: isBlocked ? 'LOGIN_RATE_LIMITED' : 'INVALID_PASSWORD',
+        message: isBlocked
+          ? '시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.'
+          : '비밀번호가 틀렸습니다.',
+      });
+    }
+
+    await regenerateSession(req);
     req.session.isAdmin = true;
+    await saveSession(req);
+    clearLoginAttempts(req);
 
     return res.json({
       ok: true,
@@ -355,9 +575,6 @@ app.get(
       SELECT
         id,
         height_cm AS heightCm,
-        target_weight_kg AS targetWeightKg,
-        target_muscle_kg AS targetMuscleKg,
-        target_body_fat_percent AS targetBodyFatPercent,
         memo,
         updated_at AS updatedAt
       FROM profile
@@ -378,9 +595,6 @@ app.put(
   handleRoute((req, res) => {
     const profile = {
       heightCm: optionalNumber(req.body.heightCm),
-      targetWeightKg: optionalNumber(req.body.targetWeightKg),
-      targetMuscleKg: optionalNumber(req.body.targetMuscleKg),
-      targetBodyFatPercent: optionalNumber(req.body.targetBodyFatPercent),
       memo: optionalText(req.body.memo, 1000),
     };
 
@@ -388,17 +602,11 @@ app.put(
       UPDATE profile
       SET
         height_cm = ?,
-        target_weight_kg = ?,
-        target_muscle_kg = ?,
-        target_body_fat_percent = ?,
         memo = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = 1
     `).run(
       profile.heightCm,
-      profile.targetWeightKg,
-      profile.targetMuscleKg,
-      profile.targetBodyFatPercent,
       profile.memo,
     );
 
@@ -547,13 +755,17 @@ app.post(
   requireLogin,
   requireJson,
   handleRoute((req, res) => {
+    const weightKg = optionalNumber(req.body.weightKg);
+    const heightCm = optionalNumber(req.body.heightCm) ?? getProfileHeightCm();
+    const bmi = calculateBmi(weightKg, heightCm) ?? optionalNumber(req.body.bmi);
+
     const row = {
       date: assertDate(req.body.date),
-      weightKg: optionalNumber(req.body.weightKg),
+      weightKg,
       muscleKg: optionalNumber(req.body.muscleKg),
       fatKg: optionalNumber(req.body.fatKg),
       bodyFatPercent: optionalNumber(req.body.bodyFatPercent),
-      bmi: optionalNumber(req.body.bmi),
+      bmi,
       bmr: optionalNumber(req.body.bmr),
       visceralFatLevel: optionalNumber(req.body.visceralFatLevel),
       score: optionalNumber(req.body.score),
@@ -600,14 +812,17 @@ app.put(
   requireJson,
   handleRoute((req, res) => {
     const id = getIdParam(req);
+    const weightKg = optionalNumber(req.body.weightKg);
+    const heightCm = optionalNumber(req.body.heightCm) ?? getProfileHeightCm();
+    const bmi = calculateBmi(weightKg, heightCm) ?? optionalNumber(req.body.bmi);
 
     const row = {
       date: assertDate(req.body.date),
-      weightKg: optionalNumber(req.body.weightKg),
+      weightKg,
       muscleKg: optionalNumber(req.body.muscleKg),
       fatKg: optionalNumber(req.body.fatKg),
       bodyFatPercent: optionalNumber(req.body.bodyFatPercent),
-      bmi: optionalNumber(req.body.bmi),
+      bmi,
       bmr: optionalNumber(req.body.bmr),
       visceralFatLevel: optionalNumber(req.body.visceralFatLevel),
       score: optionalNumber(req.body.score),
@@ -800,9 +1015,6 @@ app.get(
     const profile = db.prepare(`
       SELECT
         height_cm AS heightCm,
-        target_weight_kg AS targetWeightKg,
-        target_muscle_kg AS targetMuscleKg,
-        target_body_fat_percent AS targetBodyFatPercent,
         memo
       FROM profile
       WHERE id = 1
@@ -814,7 +1026,7 @@ app.get(
 
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: 1,
+      version: 2,
       profile,
       bodyLogs,
       inbodyLogs,
@@ -850,17 +1062,11 @@ app.post(
         UPDATE profile
         SET
           height_cm = ?,
-          target_weight_kg = ?,
-          target_muscle_kg = ?,
-          target_body_fat_percent = ?,
           memo = ?,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = 1
       `).run(
         optionalNumber(profile.heightCm),
-        optionalNumber(profile.targetWeightKg),
-        optionalNumber(profile.targetMuscleKg),
-        optionalNumber(profile.targetBodyFatPercent),
         optionalText(profile.memo, 1000),
       );
 
@@ -893,14 +1099,19 @@ app.post(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
+      const importedHeightCm = optionalNumber(profile.heightCm);
+
       for (const log of inbodyLogs) {
+        const weightKg = optionalNumber(log.weightKg);
+        const bmi = calculateBmi(weightKg, importedHeightCm) ?? optionalNumber(log.bmi);
+
         insertInbody.run(
           assertDate(log.date),
-          optionalNumber(log.weightKg),
+          weightKg,
           optionalNumber(log.muscleKg),
           optionalNumber(log.fatKg),
           optionalNumber(log.bodyFatPercent),
-          optionalNumber(log.bmi),
+          bmi,
           optionalNumber(log.bmr),
           optionalNumber(log.visceralFatLevel),
           optionalNumber(log.score),
@@ -944,7 +1155,10 @@ app.post(
   }),
 );
 
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, {
+  dotfiles: 'deny',
+  index: false,
+}));
 
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) {
