@@ -493,7 +493,19 @@ function applyInitialHash() {
   }
 }
 
-async function loadAll() {
+async function loadAll(options = {}) {
+  const { trackVisit = false } = options;
+
+  if (trackVisit) {
+    try {
+      await api('/api/visit', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.warn(error);
+    }
+  }
+
   const [me, profileData, inbodyData, workoutData, summaryData] = await Promise.all([
     api('/api/me'),
     api('/api/profile'),
@@ -506,6 +518,7 @@ async function loadAll() {
 
   document.title = 'Kannyan';
   $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
+  $('#visitorCount').textContent = new Intl.NumberFormat('ko-KR').format(me.visitorCount ?? 0);
 
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
@@ -751,7 +764,7 @@ window.addEventListener('hashchange', () => {
 
 initHeroTyping();
 
-loadAll().catch((error) => {
+loadAll({ trackVisit: true }).catch((error) => {
   console.error(error);
   showToast('초기 로딩 실패');
 });

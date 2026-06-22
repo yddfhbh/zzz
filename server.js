@@ -64,6 +64,12 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS visitor_stats (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    total_visits INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS body_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
@@ -467,6 +473,42 @@ function clearLoginAttempts(req) {
   loginAttempts.delete(getLoginAttemptKey(req));
 }
 
+db.prepare(`
+  INSERT OR IGNORE INTO visitor_stats (
+    id,
+    total_visits
+  )
+  VALUES (1, 0)
+`).run();
+
+function incrementVisitorCount() {
+  db.prepare(`
+    UPDATE visitor_stats
+    SET
+      total_visits = total_visits + 1,
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = 1
+  `).run();
+
+  const visitorStats = db.prepare(`
+    SELECT total_visits AS totalVisits
+    FROM visitor_stats
+    WHERE id = 1
+  `).get();
+
+  return visitorStats?.totalVisits ?? 0;
+}
+
+function getVisitorCount() {
+  const visitorStats = db.prepare(`
+    SELECT total_visits AS totalVisits
+    FROM visitor_stats
+    WHERE id = 1
+  `).get();
+
+  return visitorStats?.totalVisits ?? 0;
+}
+
 const bodyLogSelect = `
   SELECT
     id,
@@ -512,13 +554,29 @@ const workoutLogSelect = `
   FROM workout_logs
 `;
 
-app.get('/api/me', (req, res) => {
-  res.json({
-    ok: true,
-    loggedIn: Boolean(req.session?.isAdmin),
-    siteTitle,
-  });
-});
+app.get(
+  '/api/me',
+  handleRoute((req, res) => {
+    res.json({
+      ok: true,
+      loggedIn: Boolean(req.session?.isAdmin),
+      siteTitle,
+      visitorCount: getVisitorCount(),
+    });
+  }),
+);
+
+app.post(
+  '/api/visit',
+  handleRoute((req, res) => {
+    const visitorCount = incrementVisitorCount();
+
+    res.json({
+      ok: true,
+      visitorCount,
+    });
+  }),
+);
 
 app.post(
   '/api/login',
