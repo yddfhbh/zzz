@@ -29,20 +29,22 @@
     <button class="main-tab-button" data-main-tab="fitness">Fitness</button>
   </div>
 
-  <div class="auth-box">
-    <form id="loginForm" class="login-form">
-      <input
-        id="loginPassword"
-        type="password"
-        placeholder="관리자 비밀번호"
-        autocomplete="current-password"
-      />
-      <button type="submit">로그인</button>
-    </form>
+  <div class="main-tab-right">
+    <div class="auth-box">
+      <form id="loginForm" class="login-form">
+        <input
+          id="loginPassword"
+          type="password"
+          placeholder="관리자 비밀번호"
+          autocomplete="current-password"
+        />
+        <button type="submit">로그인</button>
+      </form>
 
-    <div id="adminPanel" class="admin-panel admin-only">
-      <span class="admin-badge">ADMIN</span>
-      <button id="logoutButton" type="button">로그아웃</button>
+      <div id="adminPanel" class="admin-panel admin-only">
+        <span class="admin-badge">ADMIN</span>
+        <button id="logoutButton" type="button">로그아웃</button>
+      </div>
     </div>
   </div>
 </nav>
@@ -68,7 +70,6 @@
               <span>🛠 Discord Bot</span>
               <span>🎮 TETR.IO Tools</span>
               <span>♟ Chess Tools</span>
-              <span>👁 총 방문수 <strong id="visitorCount">-</strong>회</span>
             </div>
           </article>
 
@@ -107,29 +108,56 @@
 
       <!-- ABOUT -->
       <section id="about" class="main-page">
-        <article class="content-panel">
+        <article class="content-panel about-panel">
           <span class="eyebrow">About</span>
           <h2>소개</h2>
-          <p>
-            부산대학교 재학중. 취미로 지피티로 이것저것 만들어보는 중입니다.
-          </p>
+          <div id="aboutView" class="about-view">
+            <p id="aboutIntro" class="about-intro"></p>
 
-          <div class="about-grid">
-            <div class="about-item">
-              <strong>Interest</strong>
-              <span>Chess, TETR.IO, Web Tools, Vibe coding</span>
-            </div>
+            <div class="about-grid">
+              <div class="about-item">
+                <strong>Interest</strong>
+                <span id="aboutInterest"></span>
+              </div>
 
-            <div class="about-item">
-              <strong>Focus</strong>
-              <span>내가 필요한데 없는거 지피티로 만들기</span>
-            </div>
+              <div class="about-item">
+                <strong>Focus</strong>
+                <span id="aboutFocus"></span>
+              </div>
 
-            <div class="about-item">
-              <strong>Site</strong>
-              <span>Oracle VM + Node.js + SQLite + Nginx</span>
+              <div class="about-item">
+                <strong>Site</strong>
+                <span id="aboutSite"></span>
+              </div>
             </div>
           </div>
+
+          <form id="aboutForm" class="form-grid admin-only about-edit">
+            <label class="wide">
+              소개 문구
+              <textarea name="intro" rows="4"></textarea>
+            </label>
+
+            <label>
+              Interest
+              <input name="interest" type="text" />
+            </label>
+
+            <label>
+              Focus
+              <input name="focus" type="text" />
+            </label>
+
+            <label class="wide">
+              Site
+              <input name="site" type="text" />
+            </label>
+
+            <div class="form-actions wide">
+              <button type="submit">저장</button>
+              <button type="button" data-reset-form="aboutForm" class="ghost">취소</button>
+            </div>
+          </form>
         </article>
       </section>
 

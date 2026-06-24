@@ -2,6 +2,7 @@ const $ = (selector) => document.querySelector(selector);
 
 const state = {
   loggedIn: false,
+  about: null,
   profile: null,
   inbodyLogs: [],
   workoutLogs: [],
@@ -382,6 +383,42 @@ function renderProfile() {
   form.memo.value = profile.memo || '';
 }
 
+function renderAbout() {
+  const about = state.about || {};
+
+  const aboutIntro = $('#aboutIntro');
+  const aboutInterest = $('#aboutInterest');
+  const aboutFocus = $('#aboutFocus');
+  const aboutSite = $('#aboutSite');
+
+  if (aboutIntro) {
+    aboutIntro.textContent = about.intro || '소개 내용이 없습니다.';
+  }
+
+  if (aboutInterest) {
+    aboutInterest.textContent = about.interest || '-';
+  }
+
+  if (aboutFocus) {
+    aboutFocus.textContent = about.focus || '-';
+  }
+
+  if (aboutSite) {
+    aboutSite.textContent = about.site || '-';
+  }
+
+  const form = $('#aboutForm');
+
+  if (!form) {
+    return;
+  }
+
+  form.intro.value = about.intro || '';
+  form.interest.value = about.interest || '';
+  form.focus.value = about.focus || '';
+  form.site.value = about.site || '';
+}
+
 function renderInbodyTable() {
   $('#inbodyTable').innerHTML = state.inbodyLogs
     .map((row) => `
@@ -439,6 +476,10 @@ function resetForm(formId) {
   if (form.id === 'workoutForm') {
     form.date.value = today();
   }
+
+  if (form.id === 'aboutForm') {
+    renderAbout();
+  }
 }
 
 function fillForm(form, row) {
@@ -493,21 +534,10 @@ function applyInitialHash() {
   }
 }
 
-async function loadAll(options = {}) {
-  const { trackVisit = false } = options;
-
-  if (trackVisit) {
-    try {
-      await api('/api/visit', {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.warn(error);
-    }
-  }
-
-  const [me, profileData, inbodyData, workoutData, summaryData] = await Promise.all([
+async function loadAll() {
+  const [me, aboutData, profileData, inbodyData, workoutData, summaryData] = await Promise.all([
     api('/api/me'),
+    api('/api/about'),
     api('/api/profile'),
     api('/api/inbody-logs'),
     api('/api/workout-logs'),
@@ -518,12 +548,13 @@ async function loadAll(options = {}) {
 
   document.title = 'Kannyan';
   $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
-  $('#visitorCount').textContent = new Intl.NumberFormat('ko-KR').format(me.visitorCount ?? 0);
 
+  state.about = aboutData.about;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
   state.workoutLogs = workoutData.workoutLogs;
 
+  renderAbout();
   renderProfile();
   renderInbodyTable();
   renderWorkoutTable();
@@ -595,6 +626,22 @@ $('#profileForm')?.addEventListener('submit', async (event) => {
     });
 
     showToast('프로필 저장 완료');
+    await loadAll();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#aboutForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  try {
+    await api('/api/about', {
+      method: 'PUT',
+      body: getFormData(event.currentTarget),
+    });
+
+    showToast('소개 저장 완료');
     await loadAll();
   } catch (error) {
     showToast(error.message);
@@ -764,7 +811,7 @@ window.addEventListener('hashchange', () => {
 
 initHeroTyping();
 
-loadAll({ trackVisit: true }).catch((error) => {
+loadAll().catch((error) => {
   console.error(error);
   showToast('초기 로딩 실패');
 });

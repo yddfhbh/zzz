@@ -64,9 +64,12 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
-  CREATE TABLE IF NOT EXISTS visitor_stats (
+  CREATE TABLE IF NOT EXISTS about_page (
     id INTEGER PRIMARY KEY CHECK (id = 1),
-    total_visits INTEGER NOT NULL DEFAULT 0,
+    intro TEXT NOT NULL DEFAULT '',
+    interest TEXT NOT NULL DEFAULT '',
+    focus TEXT NOT NULL DEFAULT '',
+    site TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -118,6 +121,28 @@ db.prepare(`
   ) VALUES (1, NULL, '')
 `).run();
 
+const defaultAboutContent = {
+  intro: '부산대학교 재학중. 취미로 지피티로 이것저것 만들어보는 중입니다.',
+  interest: 'Chess, TETR.IO, Web Tools, Vibe coding',
+  focus: '내가 필요한데 없는거 지피티로 만들기',
+  site: 'Oracle VM + Node.js + SQLite + Nginx',
+};
+
+db.prepare(`
+  INSERT OR IGNORE INTO about_page (
+    id,
+    intro,
+    interest,
+    focus,
+    site
+  ) VALUES (1, ?, ?, ?, ?)
+`).run(
+  defaultAboutContent.intro,
+  defaultAboutContent.interest,
+  defaultAboutContent.focus,
+  defaultAboutContent.site,
+);
+
 function migrateProfileTable() {
   const profileColumns = db.prepare('PRAGMA table_info(profile)').all().map((row) => row.name);
   const legacyColumns = [
@@ -153,6 +178,24 @@ function migrateProfileTable() {
 }
 
 migrateProfileTable();
+
+function getAboutContent() {
+  const about = db.prepare(`
+    SELECT
+      intro,
+      interest,
+      focus,
+      site,
+      updated_at AS updatedAt
+    FROM about_page
+    WHERE id = 1
+  `).get();
+
+  return about || {
+    ...defaultAboutContent,
+    updatedAt: null,
+  };
+}
 
 app.set('trust proxy', 1);
 
@@ -473,42 +516,6 @@ function clearLoginAttempts(req) {
   loginAttempts.delete(getLoginAttemptKey(req));
 }
 
-db.prepare(`
-  INSERT OR IGNORE INTO visitor_stats (
-    id,
-    total_visits
-  )
-  VALUES (1, 0)
-`).run();
-
-function incrementVisitorCount() {
-  db.prepare(`
-    UPDATE visitor_stats
-    SET
-      total_visits = total_visits + 1,
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = 1
-  `).run();
-
-  const visitorStats = db.prepare(`
-    SELECT total_visits AS totalVisits
-    FROM visitor_stats
-    WHERE id = 1
-  `).get();
-
-  return visitorStats?.totalVisits ?? 0;
-}
-
-function getVisitorCount() {
-  const visitorStats = db.prepare(`
-    SELECT total_visits AS totalVisits
-    FROM visitor_stats
-    WHERE id = 1
-  `).get();
-
-  return visitorStats?.totalVisits ?? 0;
-}
-
 const bodyLogSelect = `
   SELECT
     id,
@@ -561,19 +568,6 @@ app.get(
       ok: true,
       loggedIn: Boolean(req.session?.isAdmin),
       siteTitle,
-      visitorCount: getVisitorCount(),
-    });
-  }),
-);
-
-app.post(
-  '/api/visit',
-  handleRoute((req, res) => {
-    const visitorCount = incrementVisitorCount();
-
-    res.json({
-      ok: true,
-      visitorCount,
     });
   }),
 );
@@ -642,6 +636,46 @@ app.get(
     res.json({
       ok: true,
       profile,
+    });
+  }),
+);
+
+app.get(
+  '/api/about',
+  handleRoute((req, res) => {
+    res.json({
+      ok: true,
+      about: getAboutContent(),
+    });
+  }),
+);
+
+app.put(
+  '/api/about',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const currentAbout = getAboutContent();
+    const about = req.body || {};
+
+    db.prepare(`
+      UPDATE about_page
+      SET
+        intro = ?,
+        interest = ?,
+        focus = ?,
+        site = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+    `).run(
+      about.intro === undefined ? currentAbout.intro : optionalText(about.intro, 1000),
+      about.interest === undefined ? currentAbout.interest : optionalText(about.interest, 500),
+      about.focus === undefined ? currentAbout.focus : optionalText(about.focus, 500),
+      about.site === undefined ? currentAbout.site : optionalText(about.site, 500),
+    );
+
+    res.json({
+      ok: true,
     });
   }),
 );
@@ -1077,6 +1111,7 @@ app.get(
       FROM profile
       WHERE id = 1
     `).get();
+    const about = getAboutContent();
 
     const bodyLogs = db.prepare(bodyLogSelect).all();
     const inbodyLogs = db.prepare(inbodyLogSelect).all();
@@ -1084,8 +1119,9 @@ app.get(
 
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: 2,
+      version: 3,
       profile,
+      about,
       bodyLogs,
       inbodyLogs,
       workoutLogs,
@@ -1107,9 +1143,11 @@ app.post(
     const input = req.body || {};
 
     const profile = input.profile || {};
+    const about = input.about || null;
     const bodyLogs = Array.isArray(input.bodyLogs) ? input.bodyLogs : [];
     const inbodyLogs = Array.isArray(input.inbodyLogs) ? input.inbodyLogs : [];
     const workoutLogs = Array.isArray(input.workoutLogs) ? input.workoutLogs : [];
+    const currentAbout = getAboutContent();
 
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM body_logs').run();
@@ -1127,6 +1165,24 @@ app.post(
         optionalNumber(profile.heightCm),
         optionalText(profile.memo, 1000),
       );
+
+      if (about) {
+        db.prepare(`
+          UPDATE about_page
+          SET
+            intro = ?,
+            interest = ?,
+            focus = ?,
+            site = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = 1
+        `).run(
+          about.intro === undefined ? currentAbout.intro : optionalText(about.intro, 1000),
+          about.interest === undefined ? currentAbout.interest : optionalText(about.interest, 500),
+          about.focus === undefined ? currentAbout.focus : optionalText(about.focus, 500),
+          about.site === undefined ? currentAbout.site : optionalText(about.site, 500),
+        );
+      }
 
       const insertBody = db.prepare(`
         INSERT INTO body_logs (date, weight_kg, memo)

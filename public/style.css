@@ -323,6 +323,15 @@ p {
   padding-top: 0;
 }
 
+.main-tab-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  min-width: 0;
+  justify-self: end;
+}
+
 .login-form {
   display: flex;
   align-items: center;
@@ -377,7 +386,6 @@ p {
   flex: 0 0 auto;
   min-width: 0;
   padding-top: 0;
-  justify-self: end;
 }
 
 .main-tabs .login-form {
@@ -874,10 +882,30 @@ p {
   padding: 28px;
 }
 
+.about-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.about-view {
+  display: grid;
+  gap: 18px;
+}
+
+.about-intro {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+.about-edit {
+  margin-top: 2px;
+}
+
 .about-grid {
   display: grid;
   gap: 12px;
-  margin-top: 24px;
 }
 
 .about-item {
@@ -1331,6 +1359,12 @@ body.is-admin .login-form {
   .main-tab-left {
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .main-tab-right {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .main-tabs .auth-box {
