@@ -69,6 +69,14 @@ function calculateBmi(weightKg, heightCm) {
   return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
 }
 
+function calculateBodyFatPercent(bodyFatKg, weightKg) {
+  if (!Number.isFinite(bodyFatKg) || !Number.isFinite(weightKg) || bodyFatKg <= 0 || weightKg <= 0) {
+    return null;
+  }
+
+  return Math.round((bodyFatKg / weightKg) * 1000) / 10;
+}
+
 function splitGraphemes(text) {
   if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
     const segmenter = new Intl.Segmenter('ko', {
@@ -504,6 +512,7 @@ function updateInbodyBmi() {
   const form = $('#inbodyForm');
   const bmiField = form?.bmi;
   const heightField = form?.heightCm;
+  const bodyFatPercentField = form?.bodyFatPercent;  // ✅ 추가
 
   if (!form || !bmiField) {
     return;
@@ -513,7 +522,9 @@ function updateInbodyBmi() {
   const resolvedHeightValue = profileHeightValue || state.profile?.heightCm || '';
   const heightCm = parsePositiveNumber(resolvedHeightValue);
   const weightKg = parsePositiveNumber(form.weightKg?.value);
+  const bodyFatKg = parsePositiveNumber(form.bodyFatKg?.value);  // ✅ 추가
   const bmi = calculateBmi(weightKg, heightCm);
+  const bodyFatPercent = calculateBodyFatPercent(bodyFatKg, weightKg);  // ✅ 추가
 
   if (heightField) {
     heightField.value = numOrEmpty(resolvedHeightValue);
@@ -521,6 +532,11 @@ function updateInbodyBmi() {
 
   if (bmi !== null) {
     bmiField.value = bmi.toFixed(1);
+  }
+
+  // ✅ 체지방률 자동 계산 추가
+  if (bodyFatPercent !== null && bodyFatPercentField) {
+    bodyFatPercentField.value = bodyFatPercent.toFixed(1);
   }
 }
 
@@ -767,9 +783,9 @@ document.body.addEventListener('input', (event) => {
     updateInbodyBmi();
   }
 
-  if (target.name === 'weightKg' && target.closest('#inbodyForm')) {
+  if ((target.name === 'weightKg' || target.name === 'bodyFatKg') && target.closest('#inbodyForm')) {
     updateInbodyBmi();
-  }
+}
 });
 
 $('#exportButton')?.addEventListener('click', () => {
