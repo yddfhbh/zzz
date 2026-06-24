@@ -744,7 +744,7 @@ p {
 .project-card h3,
 .content-panel h2,
 .section-title h2,
-.fitness-title h2,
+.health-title h2,
 .panel h2 {
   font-family:
     "Hahmlet",
@@ -815,7 +815,7 @@ p {
 .quick-section h2,
 .section-title h2,
 .content-panel h2,
-.fitness-title h2 {
+.health-title h2 {
   margin: 8px 0 18px;
   font-size: clamp(28px, 4vw, 42px);
 }
@@ -1011,13 +1011,13 @@ p {
   font-weight: 700;
 }
 
-.fitness-title {
+.health-title {
   display: flex;
   flex-direction: column;
   margin-bottom: 16px;
 }
 
-.fitness-tabs {
+.health-tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 18px;
@@ -1030,7 +1030,7 @@ p {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 14px;
   margin-bottom: 18px;
 }
@@ -1337,7 +1337,7 @@ body.is-admin .login-form {
     grid-template-columns: 1fr;
   }
 
-  .fitness-tabs {
+  .health-tabs {
     border-radius: var(--radius);
   }
 }

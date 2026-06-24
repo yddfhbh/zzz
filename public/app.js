@@ -5,7 +5,6 @@ const state = {
   about: null,
   profile: null,
   inbodyLogs: [],
-  workoutLogs: [],
 };
 
 function today() {
@@ -206,17 +205,17 @@ function switchMainTab(tabName, options = {}) {
   });
 }
 
-function switchFitnessTab(tabName) {
-  document.querySelectorAll('.fitness-tabs .tab-button').forEach((button) => {
+function switchHealthTab(tabName) {
+  document.querySelectorAll('.health-tabs .tab-button').forEach((button) => {
     button.classList.toggle('active', button.dataset.tab === tabName);
   });
 
-  document.querySelectorAll('#fitness .tab-page').forEach((page) => {
+  document.querySelectorAll('#health .tab-page').forEach((page) => {
     page.classList.toggle('active', page.id === tabName);
   });
 
-  if (!document.getElementById('fitness')?.classList.contains('active')) {
-    switchMainTab('fitness');
+  if (!document.getElementById('health')?.classList.contains('active')) {
+    switchMainTab('health');
   }
 }
 
@@ -338,7 +337,7 @@ function renderDashboard(summary) {
     ? fmt(summary.latestInbody.bodyFatPercent, '%')
     : '-';
 
-  $('#weekWorkoutCount').textContent = `${summary.workoutCountThisWeek ?? 0}회`;
+  $('#latestInbodyDate').textContent = summary.latestInbody?.date || '-';
 
   drawLineChart($('#weightChart'), state.inbodyLogs, 'weightKg', 'kg');
   drawLineChart($('#fatChart'), state.inbodyLogs, 'bodyFatPercent', '%');
@@ -446,27 +445,6 @@ function renderInbodyTable() {
     .join('');
 }
 
-function renderWorkoutTable() {
-  $('#workoutTable').innerHTML = state.workoutLogs
-    .map((row) => `
-      <tr>
-        <td>${esc(row.date)}</td>
-        <td>${esc(row.part)}</td>
-        <td>${esc(row.name)}</td>
-        <td>${esc(fmt(row.sets))}</td>
-        <td>${esc(fmt(row.reps))}</td>
-        <td>${esc(fmt(row.weightKg, 'kg'))}</td>
-        <td>${esc(fmt(row.durationMin, '분'))}</td>
-        <td>${esc(row.memo)}</td>
-        <td class="actions admin-only">
-          <button type="button" data-action="edit" data-type="workout" data-id="${row.id}">수정</button>
-          <button type="button" class="danger" data-action="delete" data-type="workout" data-id="${row.id}">삭제</button>
-        </td>
-      </tr>
-    `)
-    .join('');
-}
-
 function resetForm(formId) {
   const form = document.getElementById(formId);
 
@@ -479,10 +457,6 @@ function resetForm(formId) {
   if (form.id === 'inbodyForm') {
     form.date.value = today();
     updateInbodyBmi();
-  }
-
-  if (form.id === 'workoutForm') {
-    form.date.value = today();
   }
 
   if (form.id === 'aboutForm') {
@@ -543,7 +517,7 @@ function updateInbodyBmi() {
 function applyInitialHash() {
   const tabName = location.hash.replace('#', '').trim();
 
-  const validMainTabs = ['home', 'about', 'projects', 'links', 'fitness'];
+  const validMainTabs = ['home', 'about', 'projects', 'links', 'health'];
 
   if (validMainTabs.includes(tabName)) {
     switchMainTab(tabName, { updateHash: false });
@@ -551,12 +525,11 @@ function applyInitialHash() {
 }
 
 async function loadAll() {
-  const [me, aboutData, profileData, inbodyData, workoutData, summaryData] = await Promise.all([
+  const [me, aboutData, profileData, inbodyData, summaryData] = await Promise.all([
     api('/api/me'),
     api('/api/about'),
     api('/api/profile'),
     api('/api/inbody-logs'),
-    api('/api/workout-logs'),
     api('/api/summary'),
   ]);
 
@@ -568,16 +541,13 @@ async function loadAll() {
   state.about = aboutData.about;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
-  state.workoutLogs = workoutData.workoutLogs;
 
   renderAbout();
   renderProfile();
   renderInbodyTable();
-  renderWorkoutTable();
   renderDashboard(summaryData.summary);
 
   resetForm('inbodyForm');
-  resetForm('workoutForm');
 
   applyInitialHash();
 }
@@ -594,9 +564,9 @@ document.querySelectorAll('.main-tab-link').forEach((button) => {
   });
 });
 
-document.querySelectorAll('.fitness-tabs .tab-button').forEach((button) => {
+document.querySelectorAll('.health-tabs .tab-button').forEach((button) => {
   button.addEventListener('click', () => {
-    switchFitnessTab(button.dataset.tab);
+    switchHealthTab(button.dataset.tab);
   });
 });
 
@@ -687,29 +657,6 @@ $('#inbodyForm')?.addEventListener('submit', async (event) => {
   }
 });
 
-$('#workoutForm')?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-
-  const form = event.currentTarget;
-  const data = getFormData(form);
-  const id = data.id;
-
-  delete data.id;
-
-  try {
-    await api(id ? `/api/workout-logs/${id}` : '/api/workout-logs', {
-      method: id ? 'PUT' : 'POST',
-      body: data,
-    });
-
-    showToast('운동 기록 저장 완료');
-    resetForm('workoutForm');
-    await loadAll();
-  } catch (error) {
-    showToast(error.message);
-  }
-});
-
 document.body.addEventListener('click', async (event) => {
   const resetButton = event.target.closest('[data-reset-form]');
 
@@ -730,15 +677,8 @@ document.body.addEventListener('click', async (event) => {
     if (type === 'inbody') {
       const row = state.inbodyLogs.find((item) => String(item.id) === String(id));
       fillForm($('#inbodyForm'), row);
-      switchMainTab('fitness');
-      switchFitnessTab('inbody');
-    }
-
-    if (type === 'workout') {
-      const row = state.workoutLogs.find((item) => String(item.id) === String(id));
-      fillForm($('#workoutForm'), row);
-      switchMainTab('fitness');
-      switchFitnessTab('workout');
+      switchMainTab('health');
+      switchHealthTab('inbody');
     }
 
     window.scrollTo({
@@ -756,8 +696,11 @@ document.body.addEventListener('click', async (event) => {
 
     const endpointByType = {
       inbody: `/api/inbody-logs/${id}`,
-      workout: `/api/workout-logs/${id}`,
     };
+
+    if (!endpointByType[type]) {
+      return;
+    }
 
     try {
       await api(endpointByType[type], {

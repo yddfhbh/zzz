@@ -20,7 +20,8 @@ const PORT = Number(process.env.PORT || 3100);
 const isProduction = process.env.NODE_ENV === 'production';
 const siteTitle = process.env.SITE_TITLE || 'Body Tracker';
 
-const dataDir = path.join(__dirname, 'data');
+const defaultDataDir = isProduction ? '/home/ubuntu/body-tracker-data' : path.join(__dirname, 'data');
+const dataDir = path.resolve(process.env.BODY_TRACKER_DATA_DIR || defaultDataDir);
 const publicDir = path.join(__dirname, 'public');
 const dbPath = path.join(dataDir, 'body-tracker.sqlite');
 
@@ -28,6 +29,8 @@ const sessionDir = path.join(dataDir, 'sessions');
 
 fs.mkdirSync(dataDir, { recursive: true });
 fs.mkdirSync(sessionDir, { recursive: true });
+
+console.log(`[body-tracker] data dir: ${dataDir}`);
 
 const SQLiteStore = connectSqlite3(session);
 

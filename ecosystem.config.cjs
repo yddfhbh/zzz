@@ -11,6 +11,7 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'production',
+        BODY_TRACKER_DATA_DIR: '/home/ubuntu/body-tracker-data',
       },
     },
   ],
