@@ -784,7 +784,7 @@ document.body.addEventListener('input', (event) => {
   }
 
   if ((target.name === 'weightKg' || target.name === 'bodyFatKg') && target.closest('#inbodyForm')) {
-    updateInbodyBmi();
+  updateInbodyBmi();
 }
 });
 
