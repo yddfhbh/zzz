@@ -455,6 +455,7 @@ function resetForm(formId) {
   form.reset();
 
   if (form.id === 'inbodyForm') {
+    delete form.dataset.editId;
     form.date.value = today();
     updateInbodyBmi();
   }
@@ -467,6 +468,10 @@ function resetForm(formId) {
 function fillForm(form, row) {
   if (!form || !row) {
     return;
+  }
+
+  if (form.id === 'inbodyForm') {
+    form.dataset.editId = String(row.id);
   }
 
   for (const element of form.elements) {
@@ -639,9 +644,7 @@ $('#inbodyForm')?.addEventListener('submit', async (event) => {
 
   const form = event.currentTarget;
   const data = getFormData(form);
-  const id = data.id;
-
-  delete data.id;
+  const id = form.dataset.editId || '';
 
   try {
     await api(id ? `/api/inbody-logs/${id}` : '/api/inbody-logs', {
