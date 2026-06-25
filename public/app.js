@@ -3,6 +3,8 @@ const $ = (selector) => document.querySelector(selector);
 const state = {
   loggedIn: false,
   about: null,
+  homeCurrentItems: [],
+  projects: [],
   profile: null,
   inbodyLogs: [],
   gameLinks: [],
@@ -695,6 +697,99 @@ function renderAbout() {
   form.site.value = about.site || '';
 }
 
+function renderHomeCurrent() {
+  const list = $('#homeCurrentList');
+  const items = state.projects
+    .filter((project) => project.isCurrent)
+    .map((project) => project.title);
+
+  state.homeCurrentItems = items;
+
+  if (!list) {
+    return;
+  }
+
+  list.innerHTML = (items.length ? items : ['아직 등록된 항목이 없습니다.'])
+    .map((item) => `<li>${esc(item)}</li>`)
+    .join('');
+}
+
+function normalizeProjectBullets(value) {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(/\r?\n/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function renderProjects() {
+  const projectGrid = $('#projectGrid');
+  const editorList = $('#projectEditorList');
+  const visibleProjects = state.projects.slice(-6);
+
+  if (projectGrid) {
+    projectGrid.innerHTML = visibleProjects
+      .map((project) => `
+        <article class="project-card">
+          <div class="project-top">
+            <span class="project-badge">${esc(project.badge)}</span>
+            <h3>${esc(project.title)}</h3>
+          </div>
+          <p>${esc(project.description)}</p>
+          <ul>
+            ${normalizeProjectBullets(project.bullets).map((item) => `<li>${esc(item)}</li>`).join('')}
+          </ul>
+        </article>
+      `)
+      .join('');
+  }
+
+  if (editorList) {
+    editorList.innerHTML = state.projects
+      .map((project, index) => `
+        <section class="project-editor-card" data-project-editor-row="${index}">
+          <div class="project-editor-head">
+            <strong>${esc(project.title)}</strong>
+            <label class="project-current-toggle">
+              <input type="checkbox" name="isCurrent" ${project.isCurrent ? 'checked' : ''} />
+              <span>홈 표시</span>
+            </label>
+          </div>
+
+          <div class="form-grid project-edit-grid">
+            <label>
+              배지
+              <input name="badge" type="text" maxlength="50" value="${esc(project.badge)}" required />
+            </label>
+
+            <label class="wide">
+              제목
+              <input name="title" type="text" maxlength="120" value="${esc(project.title)}" required />
+            </label>
+
+            <label class="wide">
+              설명
+              <textarea name="description" rows="3" maxlength="1000" required>${esc(project.description)}</textarea>
+            </label>
+
+            <label class="wide">
+              항목
+              <textarea
+                name="bullets"
+                rows="5"
+                placeholder="한 줄에 하나씩 입력"
+              >${esc(normalizeProjectBullets(project.bullets).join('\n'))}</textarea>
+            </label>
+          </div>
+        </section>
+      `)
+      .join('');
+  }
+}
+
 function renderLinkEntries(container, entries, options = {}) {
   if (!container) {
     return;
@@ -839,9 +934,10 @@ function applyInitialHash() {
 }
 
 async function loadAll() {
-  const [me, aboutData, profileData, inbodyData, summaryData, gameLinksData, botLinksData] = await Promise.all([
+  const [me, aboutData, projectData, profileData, inbodyData, summaryData, gameLinksData, botLinksData] = await Promise.all([
     api('/api/me'),
     api('/api/about'),
+    api('/api/projects'),
     api('/api/profile'),
     api('/api/inbody-logs'),
     api('/api/summary'),
@@ -855,6 +951,7 @@ async function loadAll() {
   $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
 
   state.about = aboutData.about;
+  state.projects = projectData.projects;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
   state.gameLinks = gameLinksData.gameLinks;
@@ -862,6 +959,8 @@ async function loadAll() {
   state.summary = summaryData.summary;
 
   renderAbout();
+  renderHomeCurrent();
+  renderProjects();
   renderLinkPanels();
   renderProfile();
   renderInbodyTable();
@@ -977,6 +1076,34 @@ $('#aboutForm')?.addEventListener('submit', async (event) => {
     });
 
     showToast('소개 저장 완료');
+    await loadAll();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#projectForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const rows = Array.from(document.querySelectorAll('[data-project-editor-row]'));
+  const projects = rows.map((row) => ({
+    badge: row.querySelector('[name="badge"]')?.value.trim() || '',
+    title: row.querySelector('[name="title"]')?.value.trim() || '',
+    description: row.querySelector('[name="description"]')?.value.trim() || '',
+    bullets: String(row.querySelector('[name="bullets"]')?.value || '')
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    isCurrent: row.querySelector('[name="isCurrent"]')?.checked || false,
+  }));
+
+  try {
+    await api('/api/projects', {
+      method: 'PUT',
+      body: { projects },
+    });
+
+    showToast('프로젝트 저장 완료');
     await loadAll();
   } catch (error) {
     showToast(error.message);

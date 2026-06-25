@@ -132,6 +132,26 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS home_current_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS projects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    badge TEXT NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    bullets TEXT NOT NULL DEFAULT '',
+    is_current INTEGER NOT NULL DEFAULT 0,
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 db.prepare(`
@@ -148,6 +168,62 @@ const defaultAboutContent = {
   focus: '내가 필요한데 없는거 지피티로 만들기',
   site: 'Oracle VM + Node.js + SQLite + Nginx',
 };
+
+const defaultHomeCurrentItems = [
+  'Kannyan Discord Bot',
+  'TETR.IO Profile Card',
+  'Chess Tools',
+  'Health Tracker',
+];
+
+const defaultProjects = [
+  {
+    badge: 'Discord',
+    title: 'Kannyan Discord Bot',
+    description: 'Gemini/Gemma 기반 채팅, TETR.IO 카드, 리더보드, 체스, 일일 퍼즐 등을 처리하는 디스코드 봇.',
+    bullets: [
+      'Gemini/Gemma 응답',
+      'TETR.IO 프로필 카드',
+      '체스 이미지 인식 및 대국',
+      '일일 체스 퍼즐',
+    ],
+    isCurrent: 1,
+  },
+  {
+    badge: 'TETR.IO',
+    title: 'TETR.IO Tools',
+    description: '유저 데이터, 리그 통계, 프로필 카드, 캐시, 리더보드 출력을 다루는 도구들.',
+    bullets: [
+      '프로필 카드 SVG/PNG 생성',
+      '리그 데이터 캐시',
+      'APM/PPS/VS/Glicko/RD 리더보드',
+    ],
+    isCurrent: 0,
+  },
+  {
+    badge: 'Chess',
+    title: 'Chess Tools',
+    description: '체스판 이미지에서 FEN을 추출하고 Stockfish와 연결해서 분석/대국을 지원.',
+    bullets: [
+      '이미지 → FEN',
+      'Stockfish 연동',
+      '디스코드 체스 대국',
+    ],
+    isCurrent: 1,
+  },
+  {
+    badge: 'Web',
+    title: 'Personal Home + Health',
+    description: '개인 홈페이지에 몸무게와 인바디 기록 기능을 붙인 웹사이트.',
+    bullets: [
+      'Node.js Express',
+      'SQLite 저장',
+      '관리자 로그인',
+      '공개 조회 / 로그인 수정',
+    ],
+    isCurrent: 0,
+  },
+];
 
 db.prepare(`
   INSERT OR IGNORE INTO about_page (
@@ -199,6 +275,79 @@ function migrateProfileTable() {
 }
 
 migrateProfileTable();
+
+function seedHomeCurrentItems() {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM home_current_items
+  `).get();
+
+  if (row.count > 0) {
+    return;
+  }
+
+  const insertCurrentItem = db.prepare(`
+    INSERT INTO home_current_items (text, sort_order)
+    VALUES (?, ?)
+  `);
+
+  defaultHomeCurrentItems.forEach((text, index) => {
+    insertCurrentItem.run(text, index);
+  });
+}
+
+seedHomeCurrentItems();
+
+function seedProjects() {
+  const row = db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM projects
+  `).get();
+
+  if (row.count > 0) {
+    return;
+  }
+
+  const insertProject = db.prepare(`
+    INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `);
+
+  defaultProjects.forEach((project, index) => {
+    insertProject.run(
+      project.badge,
+      project.title,
+      project.description,
+      project.bullets.join('\n'),
+      project.isCurrent,
+      index,
+    );
+  });
+}
+
+seedProjects();
+
+function syncHomeCurrentItemsFromProjects(projectRows) {
+  const currentTitles = projectRows
+    .filter((project) => Number(project.isCurrent) === 1)
+    .map((project) => optionalText(project.title, 120))
+    .filter(Boolean);
+
+  const transaction = db.transaction(() => {
+    db.prepare('DELETE FROM home_current_items').run();
+
+    const insertItem = db.prepare(`
+      INSERT INTO home_current_items (text, sort_order)
+      VALUES (?, ?)
+    `);
+
+    currentTitles.forEach((text, index) => {
+      insertItem.run(text, index);
+    });
+  });
+
+  transaction();
+}
 
 function getAboutContent() {
   const about = db.prepare(`
@@ -626,6 +775,39 @@ const botLinkSelect = `
   FROM bot_links
 `;
 
+const homeCurrentItemSelect = `
+  SELECT
+    id,
+    text,
+    sort_order AS sortOrder,
+    created_at AS createdAt,
+    updated_at AS updatedAt
+  FROM home_current_items
+`;
+
+const projectSelect = `
+  SELECT
+    id,
+    badge,
+    title,
+    description,
+    bullets,
+    is_current AS isCurrent,
+    sort_order AS sortOrder,
+    created_at AS createdAt,
+    updated_at AS updatedAt
+  FROM projects
+`;
+
+const storedProjectsForHomeSync = db.prepare(`
+  ${projectSelect}
+  ORDER BY sort_order ASC, id ASC
+`).all();
+
+if (storedProjectsForHomeSync.length > 0) {
+  syncHomeCurrentItemsFromProjects(storedProjectsForHomeSync);
+}
+
 app.get(
   '/api/me',
   handleRoute((req, res) => {
@@ -711,6 +893,119 @@ app.get(
     res.json({
       ok: true,
       about: getAboutContent(),
+    });
+  }),
+);
+
+app.get(
+  '/api/home-current-items',
+  handleRoute((req, res) => {
+    const items = db.prepare(`
+      ${homeCurrentItemSelect}
+      ORDER BY sort_order ASC, id ASC
+    `).all();
+
+    res.json({
+      ok: true,
+      items,
+    });
+  }),
+);
+
+app.put(
+  '/api/home-current-items',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const items = Array.isArray(req.body.items) ? req.body.items : [];
+
+    const sanitizedItems = items
+      .map((value) => optionalText(value, 120))
+      .filter(Boolean)
+      .slice(0, 20);
+
+    const transaction = db.transaction(() => {
+      db.prepare('DELETE FROM home_current_items').run();
+
+      const insertItem = db.prepare(`
+        INSERT INTO home_current_items (text, sort_order)
+        VALUES (?, ?)
+      `);
+
+      sanitizedItems.forEach((text, index) => {
+        insertItem.run(text, index);
+      });
+    });
+
+    transaction();
+
+    res.json({
+      ok: true,
+    });
+  }),
+);
+
+app.get(
+  '/api/projects',
+  handleRoute((req, res) => {
+    const projects = db.prepare(`
+      ${projectSelect}
+      ORDER BY sort_order ASC, id ASC
+    `).all();
+
+    res.json({
+      ok: true,
+      projects,
+    });
+  }),
+);
+
+app.put(
+  '/api/projects',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const inputProjects = Array.isArray(req.body.projects) ? req.body.projects : [];
+
+    const sanitizedProjects = inputProjects
+      .map((project, index) => ({
+        badge: requiredText(project.badge, '프로젝트 배지', 50),
+        title: requiredText(project.title, '프로젝트 제목', 120),
+        description: requiredText(project.description, '프로젝트 설명', 1000),
+        bullets: Array.isArray(project.bullets)
+          ? project.bullets.map((item) => optionalText(item, 200)).filter(Boolean).slice(0, 8)
+          : [],
+        isCurrent: project.isCurrent ? 1 : 0,
+        sortOrder: index,
+      }))
+      .slice(0, 20);
+
+    const transaction = db.transaction(() => {
+      db.prepare('DELETE FROM projects').run();
+
+      const insertProject = db.prepare(`
+        INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      sanitizedProjects.forEach((project) => {
+        insertProject.run(
+          project.badge,
+          project.title,
+          project.description,
+          project.bullets.join('\n'),
+          project.isCurrent,
+          project.sortOrder,
+        );
+      });
+
+      syncHomeCurrentItemsFromProjects(sanitizedProjects);
+    });
+
+    transaction();
+
+    res.json({
+      ok: true,
     });
   }),
 );
@@ -1267,12 +1562,22 @@ app.get(
     const workoutLogs = db.prepare(workoutLogSelect).all();
     const gameLinks = db.prepare(gameLinkSelect).all();
     const botLinks = db.prepare(botLinkSelect).all();
+    const projects = db.prepare(`
+      ${projectSelect}
+      ORDER BY sort_order ASC, id ASC
+    `).all();
+    const homeCurrentItems = db.prepare(`
+      ${homeCurrentItemSelect}
+      ORDER BY sort_order ASC, id ASC
+    `).all();
 
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: 4,
+      version: 5,
       profile,
       about,
+      projects,
+      homeCurrentItems,
       bodyLogs,
       inbodyLogs,
       workoutLogs,
@@ -1297,6 +1602,8 @@ app.post(
 
     const profile = input.profile || {};
     const about = input.about || null;
+    const projects = Array.isArray(input.projects) ? input.projects : [];
+    const homeCurrentItems = Array.isArray(input.homeCurrentItems) ? input.homeCurrentItems : [];
     const bodyLogs = Array.isArray(input.bodyLogs) ? input.bodyLogs : [];
     const inbodyLogs = Array.isArray(input.inbodyLogs) ? input.inbodyLogs : [];
     const workoutLogs = Array.isArray(input.workoutLogs) ? input.workoutLogs : [];
@@ -1310,6 +1617,8 @@ app.post(
       db.prepare('DELETE FROM workout_logs').run();
       db.prepare('DELETE FROM game_links').run();
       db.prepare('DELETE FROM bot_links').run();
+      db.prepare('DELETE FROM home_current_items').run();
+      db.prepare('DELETE FROM projects').run();
 
       db.prepare(`
         UPDATE profile
@@ -1339,6 +1648,57 @@ app.post(
           about.focus === undefined ? currentAbout.focus : optionalText(about.focus, 500),
           about.site === undefined ? currentAbout.site : optionalText(about.site, 500),
         );
+      }
+
+      const insertProject = db.prepare(`
+        INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `);
+
+      const importedProjects = projects
+        .map((project, index) => ({
+          badge: optionalText(project.badge, 50),
+          title: optionalText(project.title, 120),
+          description: optionalText(project.description, 1000),
+          bullets: Array.isArray(project.bullets)
+            ? project.bullets.map((item) => optionalText(item, 200)).filter(Boolean).slice(0, 8)
+            : String(project.bullets ?? '')
+                .split(/\r?\n/)
+                .map((item) => optionalText(item, 200))
+                .filter(Boolean)
+                .slice(0, 8),
+          isCurrent: project.isCurrent ? 1 : 0,
+          sortOrder: index,
+        }))
+        .filter((project) => project.badge && project.title);
+
+      importedProjects.forEach((project) => {
+        insertProject.run(
+          project.badge,
+          project.title,
+          project.description,
+          project.bullets.join('\n'),
+          project.isCurrent,
+          project.sortOrder,
+        );
+      });
+
+      if (importedProjects.length > 0) {
+        syncHomeCurrentItemsFromProjects(importedProjects);
+      } else {
+        const insertHomeCurrentItem = db.prepare(`
+          INSERT INTO home_current_items (text, sort_order)
+          VALUES (?, ?)
+        `);
+
+        const importedHomeCurrentItems = homeCurrentItems
+          .map((item) => optionalText(item.text ?? item, 120))
+          .filter(Boolean)
+          .slice(0, 20);
+
+        importedHomeCurrentItems.forEach((text, index) => {
+          insertHomeCurrentItem.run(text, index);
+        });
       }
 
       const insertBody = db.prepare(`

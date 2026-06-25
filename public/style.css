@@ -975,6 +975,58 @@ p {
   gap: 8px;
 }
 
+.project-editor {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.project-editor-list {
+  display: grid;
+  gap: 14px;
+}
+
+.project-editor-card {
+  padding: 18px;
+  border: 1px solid rgba(237, 238, 254, 0.10);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(139, 140, 255, 0.06)),
+    rgba(18, 18, 42, 0.34);
+  box-shadow: 0 14px 38px rgba(7, 6, 28, 0.16);
+}
+
+.project-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.project-editor-head strong {
+  color: var(--text-strong);
+  font-size: 20px;
+}
+
+.project-current-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.project-edit-grid {
+  margin: 0;
+}
+
+.current-edit-note {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-weight: 700;
+}
+
 .link-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1441,6 +1493,10 @@ body.is-admin .admin-panel.admin-only {
 }
 
 body.is-admin .form-grid.admin-only {
+  display: grid !important;
+}
+
+body.is-admin .project-editor.admin-only {
   display: grid !important;
 }
 

@@ -76,15 +76,12 @@
           <article class="intro-card">
             <span class="eyebrow">Current</span>
             <h3>지금 작업 중</h3>
-            <ul class="clean-list">
-              <li>Kannyan Discord Bot</li>
-              <li>TETR.IO Profile Card</li>
-              <li>Chess Tools</li>
-              <li>Health Tracker</li>
-            </ul>
+            <ul id="homeCurrentList" class="clean-list"></ul>
+
+            <p class="current-edit-note admin-only">Projects 탭에서 홈 표시 항목을 체크하면 여기에 자동 반영됩니다.</p>
           </article>
         </div>
-
+ 
         <section class="quick-section">
           <h2>Quick View</h2>
           <div class="quick-grid">
@@ -168,70 +165,15 @@
           <h2>만든 것들</h2>
         </div>
 
-        <div class="project-grid">
-          <article class="project-card">
-            <div class="project-top">
-              <span class="project-badge">Discord</span>
-              <h3>Kannyan Discord Bot</h3>
-            </div>
-            <p>
-              Gemini/Gemma 기반 채팅, TETR.IO 카드, 리더보드, 체스, 일일 퍼즐 등을
-              처리하는 디스코드 봇.
-            </p>
-            <ul>
-              <li>Gemini/Gemma 응답</li>
-              <li>TETR.IO 프로필 카드</li>
-              <li>체스 이미지 인식 및 대국</li>
-              <li>일일 체스 퍼즐</li>
-            </ul>
-          </article>
+        <div id="projectGrid" class="project-grid"></div>
 
-          <article class="project-card">
-            <div class="project-top">
-              <span class="project-badge">TETR.IO</span>
-              <h3>TETR.IO Tools</h3>
-            </div>
-            <p>
-              유저 데이터, 리그 통계, 프로필 카드, 캐시, 리더보드 출력을 다루는 도구들.
-            </p>
-            <ul>
-              <li>프로필 카드 SVG/PNG 생성</li>
-              <li>리그 데이터 캐시</li>
-              <li>APM/PPS/VS/Glicko/RD 리더보드</li>
-            </ul>
-          </article>
+        <form id="projectForm" class="project-editor admin-only">
+          <div id="projectEditorList" class="project-editor-list"></div>
 
-          <article class="project-card">
-            <div class="project-top">
-              <span class="project-badge">Chess</span>
-              <h3>Chess Tools</h3>
-            </div>
-            <p>
-              체스판 이미지에서 FEN을 추출하고 Stockfish와 연결해서 분석/대국을 지원.
-            </p>
-            <ul>
-              <li>이미지 → FEN</li>
-              <li>Stockfish 연동</li>
-              <li>디스코드 체스 대국</li>
-            </ul>
-          </article>
-
-          <article class="project-card">
-            <div class="project-top">
-              <span class="project-badge">Web</span>
-              <h3>Personal Home + Health</h3>
-            </div>
-            <p>
-              개인 홈페이지에 몸무게와 인바디 기록 기능을 붙인 웹사이트.
-            </p>
-            <ul>
-              <li>Node.js Express</li>
-              <li>SQLite 저장</li>
-              <li>관리자 로그인</li>
-              <li>공개 조회 / 로그인 수정</li>
-            </ul>
-          </article>
-        </div>
+          <div class="form-actions">
+            <button type="submit">프로젝트 저장</button>
+          </div>
+        </form>
       </section>
 
       <!-- LINKS -->
