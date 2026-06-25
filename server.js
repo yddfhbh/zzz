@@ -76,6 +76,13 @@ db.exec(`
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
+  CREATE TABLE IF NOT EXISTS home_main_work (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    title TEXT NOT NULL DEFAULT '',
+    content TEXT NOT NULL DEFAULT '',
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS body_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     date TEXT NOT NULL,
@@ -242,6 +249,14 @@ db.prepare(`
   defaultAboutContent.site,
 );
 
+db.prepare(`
+  INSERT OR IGNORE INTO home_main_work (
+    id,
+    title,
+    content
+  ) VALUES (1, '메인 작업물', '')
+`).run();
+
 function migrateProfileTable() {
   const profileColumns = db.prepare('PRAGMA table_info(profile)').all().map((row) => row.name);
   const legacyColumns = [
@@ -365,6 +380,21 @@ function getAboutContent() {
 
   return about || {
     ...defaultAboutContent,
+    updatedAt: null,
+  };
+}
+
+function getHomeMainWork() {
+  return db.prepare(`
+    SELECT
+      title,
+      content,
+      updated_at AS updatedAt
+    FROM home_main_work
+    WHERE id = 1
+  `).get() || {
+    title: '메인 작업물',
+    content: '',
     updatedAt: null,
   };
 }
@@ -895,6 +925,39 @@ app.get(
     res.json({
       ok: true,
       about: getAboutContent(),
+    });
+  }),
+);
+
+app.get(
+  '/api/home-main-work',
+  handleRoute((req, res) => {
+    res.json({
+      ok: true,
+      homeMainWork: getHomeMainWork(),
+    });
+  }),
+);
+
+app.put(
+  '/api/home-main-work',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    db.prepare(`
+      UPDATE home_main_work
+      SET
+        title = ?,
+        content = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = 1
+    `).run(
+      requiredText(req.body.title, '메인 작업물 제목', 120),
+      optionalText(req.body.content, 4000),
+    );
+
+    res.json({
+      ok: true,
     });
   }),
 );
@@ -1558,6 +1621,7 @@ app.get(
       WHERE id = 1
     `).get();
     const about = getAboutContent();
+    const homeMainWork = getHomeMainWork();
 
     const bodyLogs = db.prepare(bodyLogSelect).all();
     const inbodyLogs = db.prepare(inbodyLogSelect).all();
@@ -1578,6 +1642,7 @@ app.get(
       version: 5,
       profile,
       about,
+      homeMainWork,
       projects,
       homeCurrentItems,
       bodyLogs,
@@ -1604,6 +1669,7 @@ app.post(
 
     const profile = input.profile || {};
     const about = input.about || null;
+    const homeMainWork = input.homeMainWork || null;
     const projects = Array.isArray(input.projects) ? input.projects : [];
     const homeCurrentItems = Array.isArray(input.homeCurrentItems) ? input.homeCurrentItems : [];
     const bodyLogs = Array.isArray(input.bodyLogs) ? input.bodyLogs : [];
@@ -1649,6 +1715,20 @@ app.post(
           about.interest === undefined ? currentAbout.interest : optionalText(about.interest, 500),
           about.focus === undefined ? currentAbout.focus : optionalText(about.focus, 500),
           about.site === undefined ? currentAbout.site : optionalText(about.site, 500),
+        );
+      }
+
+      if (homeMainWork) {
+        db.prepare(`
+          UPDATE home_main_work
+          SET
+            title = ?,
+            content = ?,
+            updated_at = CURRENT_TIMESTAMP
+          WHERE id = 1
+        `).run(
+          homeMainWork.title === undefined ? '메인 작업물' : requiredText(homeMainWork.title, '메인 작업물 제목', 120),
+          homeMainWork.content === undefined ? '' : optionalText(homeMainWork.content, 4000),
         );
       }
 

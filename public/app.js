@@ -3,6 +3,7 @@ const $ = (selector) => document.querySelector(selector);
 const state = {
   loggedIn: false,
   about: null,
+  homeMainWork: null,
   homeCurrentItems: [],
   projects: [],
   profile: null,
@@ -697,6 +698,26 @@ function renderAbout() {
   form.site.value = about.site || '';
 }
 
+function renderHomeMainWork() {
+  const homeMainWork = state.homeMainWork || {};
+  const title = $('#homeMainWorkTitle');
+  const content = $('#homeMainWorkContent');
+  const form = $('#homeMainWorkForm');
+
+  if (title) {
+    title.textContent = homeMainWork.title || '메인 작업물';
+  }
+
+  if (content) {
+    content.textContent = homeMainWork.content || '내용을 곧 추가할 예정입니다.';
+  }
+
+  if (form) {
+    form.title.value = homeMainWork.title || '메인 작업물';
+    form.content.value = homeMainWork.content || '';
+  }
+}
+
 function renderHomeCurrent() {
   const list = $('#homeCurrentList');
   const items = state.projects
@@ -959,9 +980,10 @@ function applyInitialHash() {
 }
 
 async function loadAll() {
-  const [me, aboutData, projectData, profileData, inbodyData, summaryData, gameLinksData, botLinksData] = await Promise.all([
+  const [me, aboutData, homeMainWorkData, projectData, profileData, inbodyData, summaryData, gameLinksData, botLinksData] = await Promise.all([
     api('/api/me'),
     api('/api/about'),
+    api('/api/home-main-work'),
     api('/api/projects'),
     api('/api/profile'),
     api('/api/inbody-logs'),
@@ -976,6 +998,7 @@ async function loadAll() {
   $('#siteTitle').textContent = me.siteTitle || 'Kannyan';
 
   state.about = aboutData.about;
+  state.homeMainWork = homeMainWorkData.homeMainWork;
   state.projects = projectData.projects;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
@@ -984,6 +1007,7 @@ async function loadAll() {
   state.summary = summaryData.summary;
 
   renderAbout();
+  renderHomeMainWork();
   renderHomeCurrent();
   renderProjects();
   renderLinkPanels();
@@ -1101,6 +1125,22 @@ $('#aboutForm')?.addEventListener('submit', async (event) => {
     });
 
     showToast('소개 저장 완료');
+    await loadAll();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#homeMainWorkForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  try {
+    await api('/api/home-main-work', {
+      method: 'PUT',
+      body: getFormData(event.currentTarget),
+    });
+
+    showToast('메인 작업물 저장 완료');
     await loadAll();
   } catch (error) {
     showToast(error.message);
