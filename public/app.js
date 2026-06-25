@@ -1145,12 +1145,17 @@ document.querySelectorAll('.main-tab-link').forEach((button) => {
   });
 });
 
-function toggleLinkPanel(panelName) {
+function toggleLinkPanel(panelName, options = {}) {
+  const { forceOpen = false } = options;
   const panelWrap = $('#linkPanels');
   const toggleButtons = document.querySelectorAll('[data-link-panel-toggle]');
   const panels = document.querySelectorAll('.link-subpanel');
   const activePanelName = panelWrap?.dataset.activePanel || '';
-  const nextPanelName = activePanelName === panelName ? '' : panelName;
+  const nextPanelName = forceOpen
+    ? panelName
+    : activePanelName === panelName
+      ? ''
+      : panelName;
 
   if (panelWrap) {
     panelWrap.hidden = !nextPanelName;
@@ -1388,7 +1393,7 @@ document.body.addEventListener('click', async (event) => {
       const form = $('#gameLinkForm');
       fillForm(form, row);
       switchMainTab('links');
-      toggleLinkPanel('games');
+      toggleLinkPanel('games', { forceOpen: true });
       form?.scrollIntoView({
         block: 'center',
         behavior: 'smooth',
@@ -1401,7 +1406,7 @@ document.body.addEventListener('click', async (event) => {
       const form = $('#botLinkForm');
       fillForm(form, row);
       switchMainTab('links');
-      toggleLinkPanel('bots');
+      toggleLinkPanel('bots', { forceOpen: true });
       form?.scrollIntoView({
         block: 'center',
         behavior: 'smooth',
