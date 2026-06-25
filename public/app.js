@@ -784,6 +784,40 @@ function getProjectLinkLabel(project) {
   return '프로젝트 열기';
 }
 
+const linkFormConfig = {
+  gameLinkForm: {
+    submitButtonId: 'gameLinkSubmitButton',
+    cancelButtonId: 'gameLinkCancelButton',
+    createText: '게임 링크 추가',
+    editText: '게임 링크 수정',
+  },
+  botLinkForm: {
+    submitButtonId: 'botLinkSubmitButton',
+    cancelButtonId: 'botLinkCancelButton',
+    createText: '봇 링크 추가',
+    editText: '봇 링크 수정',
+  },
+};
+
+function setLinkFormMode(formId, isEditing) {
+  const config = linkFormConfig[formId];
+
+  if (!config) {
+    return;
+  }
+
+  const submitButton = document.getElementById(config.submitButtonId);
+  const cancelButton = document.getElementById(config.cancelButtonId);
+
+  if (submitButton) {
+    submitButton.textContent = isEditing ? config.editText : config.createText;
+  }
+
+  if (cancelButton) {
+    cancelButton.hidden = !isEditing;
+  }
+}
+
 function createEmptyProject() {
   return {
     badge: '',
@@ -904,6 +938,7 @@ function renderLinkEntries(container, entries, options = {}) {
   const {
     metaKey,
     emptyText,
+    type,
   } = options;
 
   if (!entries.length) {
@@ -918,7 +953,13 @@ function renderLinkEntries(container, entries, options = {}) {
           <span class="link-entry-name">${esc(entry.name)}</span>
           <span class="link-entry-meta">${esc(entry[metaKey])}</span>
         </div>
-        <a class="link-entry-action" href="${esc(entry.url)}" target="_blank" rel="noreferrer">이동</a>
+        <div class="link-entry-actions">
+          <a class="link-entry-action" href="${esc(entry.url)}" target="_blank" rel="noreferrer">이동</a>
+          ${state.loggedIn ? `
+            <button type="button" class="ghost link-entry-admin-button" data-action="edit" data-type="${esc(type)}" data-id="${entry.id}">수정</button>
+            <button type="button" class="danger link-entry-admin-button" data-action="delete" data-type="${esc(type)}" data-id="${entry.id}">삭제</button>
+          ` : ''}
+        </div>
       </div>
     `)
     .join('');
@@ -928,11 +969,13 @@ function renderLinkPanels() {
   renderLinkEntries($('#gameLinkList'), state.gameLinks, {
     metaKey: 'nickname',
     emptyText: '아직 추가된 게임 프로필이 없습니다.',
+    type: 'gameLink',
   });
 
   renderLinkEntries($('#botLinkList'), state.botLinks, {
     metaKey: 'feature',
     emptyText: '아직 추가된 디스코드 봇이 없습니다.',
+    type: 'botLink',
   });
 }
 
@@ -973,6 +1016,11 @@ function resetForm(formId) {
   if (form.id === 'aboutForm') {
     renderAbout();
   }
+
+  if (form.id === 'gameLinkForm' || form.id === 'botLinkForm') {
+    delete form.dataset.editId;
+    setLinkFormMode(form.id, false);
+  }
 }
 
 function fillForm(form, row) {
@@ -982,6 +1030,11 @@ function fillForm(form, row) {
 
   if (form.id === 'inbodyForm') {
     form.dataset.editId = String(row.id);
+  }
+
+  if (form.id === 'gameLinkForm' || form.id === 'botLinkForm') {
+    form.dataset.editId = String(row.id);
+    setLinkFormMode(form.id, true);
   }
 
   for (const element of form.elements) {
@@ -1242,15 +1295,16 @@ $('#gameLinkForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const form = event.currentTarget;
+  const editId = form.dataset.editId;
 
   try {
-    await api('/api/game-links', {
-      method: 'POST',
+    await api(editId ? `/api/game-links/${editId}` : '/api/game-links', {
+      method: editId ? 'PUT' : 'POST',
       body: getFormData(form),
     });
 
-    showToast('게임 링크 추가 완료');
-    form.reset();
+    showToast(editId ? '게임 링크 수정 완료' : '게임 링크 추가 완료');
+    resetForm('gameLinkForm');
     await loadAll();
   } catch (error) {
     showToast(error.message);
@@ -1261,15 +1315,16 @@ $('#botLinkForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const form = event.currentTarget;
+  const editId = form.dataset.editId;
 
   try {
-    await api('/api/bot-links', {
-      method: 'POST',
+    await api(editId ? `/api/bot-links/${editId}` : '/api/bot-links', {
+      method: editId ? 'PUT' : 'POST',
       body: getFormData(form),
     });
 
-    showToast('봇 링크 추가 완료');
-    form.reset();
+    showToast(editId ? '봇 링크 수정 완료' : '봇 링크 추가 완료');
+    resetForm('botLinkForm');
     await loadAll();
   } catch (error) {
     showToast(error.message);
@@ -1319,14 +1374,40 @@ document.body.addEventListener('click', async (event) => {
       fillForm($('#inbodyForm'), row);
       switchMainTab('health');
       switchHealthTab('inbody');
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+
+      return;
     }
 
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth',
-    });
+    if (type === 'gameLink') {
+      const row = state.gameLinks.find((item) => String(item.id) === String(id));
+      const form = $('#gameLinkForm');
+      fillForm(form, row);
+      switchMainTab('links');
+      toggleLinkPanel('games');
+      form?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      });
+      return;
+    }
 
-    return;
+    if (type === 'botLink') {
+      const row = state.botLinks.find((item) => String(item.id) === String(id));
+      const form = $('#botLinkForm');
+      fillForm(form, row);
+      switchMainTab('links');
+      toggleLinkPanel('bots');
+      form?.scrollIntoView({
+        block: 'center',
+        behavior: 'smooth',
+      });
+      return;
+    }
   }
 
   if (action === 'delete') {
@@ -1336,6 +1417,8 @@ document.body.addEventListener('click', async (event) => {
 
     const endpointByType = {
       inbody: `/api/inbody-logs/${id}`,
+      gameLink: `/api/game-links/${id}`,
+      botLink: `/api/bot-links/${id}`,
     };
 
     if (!endpointByType[type]) {

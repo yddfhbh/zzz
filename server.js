@@ -1273,6 +1273,67 @@ app.post(
   }),
 );
 
+app.put(
+  '/api/game-links/:id',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const id = getIdParam(req);
+    const row = {
+      name: requiredText(req.body.name, '게임 이름', 100),
+      nickname: requiredText(req.body.nickname, '닉네임', 100),
+      url: requiredUrl(req.body.url, '게임 링크'),
+    };
+
+    const result = db.prepare(`
+      UPDATE game_links
+      SET
+        name = ?,
+        nickname = ?,
+        url = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      row.name,
+      row.nickname,
+      row.url,
+      id,
+    );
+
+    if (result.changes === 0) {
+      const error = new Error('게임 링크를 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+    });
+  }),
+);
+
+app.delete(
+  '/api/game-links/:id',
+  requireLogin,
+  handleRoute((req, res) => {
+    const id = getIdParam(req);
+    const result = db.prepare(`
+      DELETE FROM game_links
+      WHERE id = ?
+    `).run(id);
+
+    if (result.changes === 0) {
+      const error = new Error('게임 링크를 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+    });
+  }),
+);
+
 app.get(
   '/api/bot-links',
   handleRoute((req, res) => {
@@ -1311,6 +1372,67 @@ app.post(
     res.json({
       ok: true,
       id: result.lastInsertRowid,
+    });
+  }),
+);
+
+app.put(
+  '/api/bot-links/:id',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const id = getIdParam(req);
+    const row = {
+      name: requiredText(req.body.name, '봇 이름', 100),
+      feature: requiredText(req.body.feature, '주요 기능', 200),
+      url: requiredUrl(req.body.url, '봇 링크'),
+    };
+
+    const result = db.prepare(`
+      UPDATE bot_links
+      SET
+        name = ?,
+        feature = ?,
+        url = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).run(
+      row.name,
+      row.feature,
+      row.url,
+      id,
+    );
+
+    if (result.changes === 0) {
+      const error = new Error('봇 링크를 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+
+    res.json({
+      ok: true,
+    });
+  }),
+);
+
+app.delete(
+  '/api/bot-links/:id',
+  requireLogin,
+  handleRoute((req, res) => {
+    const id = getIdParam(req);
+    const result = db.prepare(`
+      DELETE FROM bot_links
+      WHERE id = ?
+    `).run(id);
+
+    if (result.changes === 0) {
+      const error = new Error('봇 링크를 찾을 수 없습니다.');
+      error.status = 404;
+      throw error;
+    }
+
+    res.json({
+      ok: true,
     });
   }),
 );
