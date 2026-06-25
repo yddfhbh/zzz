@@ -1043,6 +1043,11 @@ p {
   box-shadow: 0 14px 38px rgba(7, 6, 28, 0.16);
 }
 
+.link-panels[hidden],
+.link-subpanel[hidden] {
+  display: none !important;
+}
+
 .link-list {
   display: grid;
   gap: 10px;
