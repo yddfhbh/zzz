@@ -821,11 +821,42 @@ p {
   gap: 16px;
 }
 
+.home-main-work-head {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.home-main-work-panel .eyebrow {
+  margin-bottom: -14px;
+}
+
+.home-main-work-panel h2 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
 .home-main-work-content {
   margin: 0;
   color: var(--muted);
   line-height: 1.8;
   white-space: pre-line;
+}
+
+.home-main-work-button {
+  width: fit-content;
+  padding: 8px 14px;
+  font-size: 13px;
+  line-height: 1.2;
+  flex: 0 0 auto;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  color: var(--muted);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .quick-section h2,
