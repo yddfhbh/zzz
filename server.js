@@ -64,6 +64,13 @@ const sessionCookieOptions = {
   maxAge: SESSION_TTL_MS,
 };
 
+const sessionClearCookieOptions = {
+  httpOnly: true,
+  sameSite: 'strict',
+  secure: isProduction,
+  path: '/',
+};
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS sessions (
     sid TEXT PRIMARY KEY,
@@ -430,6 +437,10 @@ class BetterSqliteSessionStore extends session.Store {
 }
 
 const sessionStore = new BetterSqliteSessionStore(db);
+
+if (isProduction && sessionStore instanceof session.MemoryStore) {
+  throw new Error('Production session store must not use MemoryStore.');
+}
 
 function seedHomeCurrentItems() {
   const row = db.prepare(`
@@ -1037,7 +1048,7 @@ app.post(
 
 app.post('/api/logout', (req, res) => {
   req.session.destroy((error) => {
-    res.clearCookie('bt.sid', sessionCookieOptions);
+    res.clearCookie('bt.sid', sessionClearCookieOptions);
 
     if (error) {
       return res.status(500).json({
