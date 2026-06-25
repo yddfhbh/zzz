@@ -152,6 +152,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     badge TEXT NOT NULL,
     title TEXT NOT NULL,
+    url TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
     bullets TEXT NOT NULL DEFAULT '',
     is_current INTEGER NOT NULL DEFAULT 0,
@@ -187,6 +188,7 @@ const defaultProjects = [
   {
     badge: 'WEB GAME',
     title: 'Chesubu',
+    url: '',
     description: '브라우저에서 바로 체스 대국을 진행할 수 있는 온라인 체스 사이트.',
     bullets: [
       '실시간 체스판 조작',
@@ -199,6 +201,7 @@ const defaultProjects = [
   {
     badge: 'DISCORD BOT',
     title: 'Kannyan Discord Bot',
+    url: '',
     description: 'Gemini/Gemma 채팅, TETR.IO 도구, 체스 분석 기능을 한곳에 모은 개인 디스코드 봇.',
     bullets: [
       'Gemini/Gemma 대화 응답',
@@ -211,6 +214,7 @@ const defaultProjects = [
   {
     badge: 'EDUCATION',
     title: 'Nyannyan Problem Bot',
+    url: '',
     description: '과외 문제를 단원별로 정리하고, 정답 선택까지 관리할 수 있는 디스코드 문제 정리 봇.',
     bullets: [
       '문제 이미지 업로드',
@@ -223,6 +227,7 @@ const defaultProjects = [
   {
     badge: 'Web',
     title: 'Personal Home + Health',
+    url: '',
     description: '개인 홈페이지와 인바디 기록 관리를 함께 담은 웹사이트.',
     bullets: [
       'Node.js Express 서버',
@@ -293,6 +298,19 @@ function migrateProfileTable() {
 
 migrateProfileTable();
 
+function migrateProjectsTable() {
+  const projectColumns = db.prepare('PRAGMA table_info(projects)').all().map((row) => row.name);
+
+  if (!projectColumns.includes('url')) {
+    db.exec(`
+      ALTER TABLE projects
+      ADD COLUMN url TEXT NOT NULL DEFAULT '';
+    `);
+  }
+}
+
+migrateProjectsTable();
+
 function seedHomeCurrentItems() {
   const row = db.prepare(`
     SELECT COUNT(*) AS count
@@ -326,14 +344,15 @@ function seedProjects() {
   }
 
   const insertProject = db.prepare(`
-    INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO projects (badge, title, url, description, bullets, is_current, sort_order)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   defaultProjects.forEach((project, index) => {
     insertProject.run(
       project.badge,
       project.title,
+      project.url,
       project.description,
       project.bullets.join('\n'),
       project.isCurrent,
@@ -536,6 +555,11 @@ function requiredUrl(value, fieldName = '링크') {
   }
 
   return parsedUrl.toString();
+}
+
+function optionalUrl(value, fieldName = '링크') {
+  const text = optionalText(value, 1000);
+  return text ? requiredUrl(text, fieldName) : '';
 }
 
 function optionalNumber(value) {
@@ -822,6 +846,7 @@ const projectSelect = `
     id,
     badge,
     title,
+    url,
     description,
     bullets,
     is_current AS isCurrent,
@@ -1036,6 +1061,7 @@ app.put(
       .map((project, index) => ({
         badge: requiredText(project.badge, '프로젝트 배지', 50),
         title: requiredText(project.title, '프로젝트 제목', 120),
+        url: optionalUrl(project.url, '프로젝트 링크'),
         description: requiredText(project.description, '프로젝트 설명', 1000),
         bullets: Array.isArray(project.bullets)
           ? project.bullets.map((item) => optionalText(item, 200)).filter(Boolean).slice(0, 8)
@@ -1049,14 +1075,15 @@ app.put(
       db.prepare('DELETE FROM projects').run();
 
       const insertProject = db.prepare(`
-        INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (badge, title, url, description, bullets, is_current, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
       sanitizedProjects.forEach((project) => {
         insertProject.run(
           project.badge,
           project.title,
+          project.url,
           project.description,
           project.bullets.join('\n'),
           project.isCurrent,
@@ -1639,7 +1666,7 @@ app.get(
 
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: 5,
+      version: 6,
       profile,
       about,
       homeMainWork,
@@ -1733,14 +1760,15 @@ app.post(
       }
 
       const insertProject = db.prepare(`
-        INSERT INTO projects (badge, title, description, bullets, is_current, sort_order)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (badge, title, url, description, bullets, is_current, sort_order)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
       const importedProjects = projects
         .map((project, index) => ({
           badge: optionalText(project.badge, 50),
           title: optionalText(project.title, 120),
+          url: optionalUrl(project.url, '프로젝트 링크'),
           description: optionalText(project.description, 1000),
           bullets: Array.isArray(project.bullets)
             ? project.bullets.map((item) => optionalText(item, 200)).filter(Boolean).slice(0, 8)
@@ -1758,6 +1786,7 @@ app.post(
         insertProject.run(
           project.badge,
           project.title,
+          project.url,
           project.description,
           project.bullets.join('\n'),
           project.isCurrent,

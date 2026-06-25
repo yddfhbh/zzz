@@ -750,6 +750,7 @@ function createEmptyProject() {
   return {
     badge: '',
     title: '',
+    url: '',
     description: '',
     bullets: [],
     isCurrent: false,
@@ -762,6 +763,7 @@ function collectProjectDrafts() {
   return rows.map((row) => ({
     badge: row.querySelector('[name="badge"]')?.value.trim() || '',
     title: row.querySelector('[name="title"]')?.value.trim() || '',
+    url: row.querySelector('[name="url"]')?.value.trim() || '',
     description: row.querySelector('[name="description"]')?.value.trim() || '',
     bullets: String(row.querySelector('[name="bullets"]')?.value || '')
       .split(/\r?\n/)
@@ -783,6 +785,15 @@ function renderProjects() {
           <div class="project-top">
             <span class="project-badge">${esc(project.badge)}</span>
             <h3>${esc(project.title)}</h3>
+            ${project.url ? `
+              <a
+                class="project-link"
+                href="${esc(project.url)}"
+                target="_blank"
+                rel="noreferrer"
+                title="${esc(project.url)}"
+              >링크 열기</a>
+            ` : ''}
           </div>
           <p>${esc(project.description)}</p>
           <ul>
@@ -814,6 +825,17 @@ function renderProjects() {
             <label class="wide">
               제목
               <input name="title" type="text" maxlength="120" value="${esc(project.title)}" required />
+            </label>
+
+            <label class="wide">
+              링크
+              <input
+                name="url"
+                type="url"
+                maxlength="1000"
+                placeholder="https://..."
+                value="${esc(project.url || '')}"
+              />
             </label>
 
             <label class="wide">

@@ -827,6 +827,7 @@ p {
   justify-content: flex-start;
   gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: -14px;
 }
 
 .home-main-work-panel .eyebrow {
@@ -847,16 +848,23 @@ p {
 
 .home-main-work-button {
   width: fit-content;
-  padding: 8px 14px;
+  padding: 0;
   font-size: 13px;
   line-height: 1.2;
   flex: 0 0 auto;
   background: transparent;
   border: 0;
+  border-radius: 0;
   box-shadow: none;
-  color: var(--muted);
+  color: var(--text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.home-main-work-button:hover,
+.home-main-work-button:active {
+  background: transparent;
+  box-shadow: none;
 }
 
 .quick-section h2,
@@ -1011,6 +1019,16 @@ p {
 .project-card h3 {
   margin: 0;
   font-size: 26px;
+}
+
+.project-link {
+  width: fit-content;
+  color: #dbeafe;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  word-break: break-all;
 }
 
 .project-card p {
