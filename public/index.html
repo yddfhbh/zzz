@@ -242,25 +242,125 @@
         </div>
 
         <div class="link-grid">
-          <a class="link-card" href="https://github.com/yddfhbh" target="_blank" rel="noreferrer">
+          <button
+            type="button"
+            class="link-card link-card-toggle"
+            data-link-panel-toggle="games"
+            aria-expanded="false"
+          >
+            <strong>Games</strong>
+            <span>게임 프로필</span>
+          </button>
+
+          <button
+            type="button"
+            class="link-card link-card-toggle"
+            data-link-panel-toggle="github"
+            aria-expanded="false"
+          >
             <strong>GitHub</strong>
             <span>코드 저장소</span>
-          </a>
+          </button>
 
-          <a class="link-card" href="https://github.com/yddfhbh/body" target="_blank" rel="noreferrer">
-            <strong>This Site Repo</strong>
-            <span>개인 홈페이지 저장소</span>
-          </a>
+          <button
+            type="button"
+            class="link-card link-card-toggle"
+            data-link-panel-toggle="discord"
+            aria-expanded="false"
+          >
+            <strong>Discord</strong>
+            <span>개인 디스코드 서버</span>
+          </button>
 
-          <a class="link-card" href="https://ch.tetr.io/u/hebi_" target="_blank" rel="noreferrer">
-            <strong>TETR.IO</strong>
-            <span>hebi_ 프로필</span>
-          </a>
+          <button
+            type="button"
+            class="link-card link-card-toggle"
+            data-link-panel-toggle="bots"
+            aria-expanded="false"
+          >
+            <strong>Bots</strong>
+            <span>디스코드 봇</span>
+          </button>
+        </div>
 
-          <a class="link-card" href="https://lichess.org/" target="_blank" rel="noreferrer">
-            <strong>Lichess</strong>
-            <span>체스 관련 링크</span>
-          </a>
+        <div id="linkPanels" class="link-panels" hidden>
+          <section class="link-subpanel" data-link-panel="games" hidden>
+            <div id="gameLinkList" class="link-list"></div>
+
+            <form id="gameLinkForm" class="form-grid link-admin-form admin-only">
+              <label>
+                게임 이름
+                <input name="name" type="text" maxlength="100" required />
+              </label>
+
+              <label>
+                닉네임
+                <input name="nickname" type="text" maxlength="100" required />
+              </label>
+
+              <label class="wide">
+                링크
+                <input name="url" type="url" maxlength="1000" placeholder="https://..." required />
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">게임 링크 추가</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="link-subpanel" data-link-panel="github" hidden>
+            <div class="link-entry">
+              <span class="link-entry-name">yddfhbh</span>
+              <a
+                class="link-entry-action"
+                href="https://github.com/yddfhbh"
+                target="_blank"
+                rel="noreferrer"
+              >
+                이동
+              </a>
+            </div>
+          </section>
+
+          <section class="link-subpanel" data-link-panel="discord" hidden>
+            <div class="link-entry">
+              <span class="link-entry-name">리오리오링</span>
+              <a
+                class="link-entry-action"
+                href="https://discord.gg/GURj6wd7CT"
+                target="_blank"
+                rel="noreferrer"
+              >
+                이동
+              </a>
+            </div>
+          </section>
+
+          <section class="link-subpanel" data-link-panel="bots" hidden>
+            <div id="botLinkList" class="link-list"></div>
+
+            <form id="botLinkForm" class="form-grid link-admin-form admin-only">
+              <label>
+                봇 이름
+                <input name="name" type="text" maxlength="100" required />
+              </label>
+
+              <label>
+                주요 기능
+                <input name="feature" type="text" maxlength="200" required />
+              </label>
+
+              <label class="wide">
+                링크
+                <input name="url" type="url" maxlength="1000" placeholder="https://..." required />
+              </label>
+
+              <div class="form-actions wide">
+                <button type="submit">봇 링크 추가</button>
+              </div>
+            </form>
+          </section>
         </div>
       </section>
 

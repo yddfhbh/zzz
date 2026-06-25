@@ -114,6 +114,24 @@ db.exec(`
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS game_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    nickname TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS bot_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    feature TEXT NOT NULL DEFAULT '',
+    url TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 db.prepare(`
@@ -315,6 +333,28 @@ function requiredText(value, fieldName, maxLength = 100) {
   }
 
   return text.slice(0, maxLength);
+}
+
+function requiredUrl(value, fieldName = '링크') {
+  const text = requiredText(value, fieldName, 1000);
+
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(text);
+  } catch {
+    const error = new Error(`${fieldName} 주소 형식이 올바르지 않습니다.`);
+    error.status = 400;
+    throw error;
+  }
+
+  if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+    const error = new Error(`${fieldName} 주소는 http 또는 https 여야 합니다.`);
+    error.status = 400;
+    throw error;
+  }
+
+  return parsedUrl.toString();
 }
 
 function optionalNumber(value) {
@@ -564,6 +604,28 @@ const workoutLogSelect = `
   FROM workout_logs
 `;
 
+const gameLinkSelect = `
+  SELECT
+    id,
+    name,
+    nickname,
+    url,
+    created_at AS createdAt,
+    updated_at AS updatedAt
+  FROM game_links
+`;
+
+const botLinkSelect = `
+  SELECT
+    id,
+    name,
+    feature,
+    url,
+    created_at AS createdAt,
+    updated_at AS updatedAt
+  FROM bot_links
+`;
+
 app.get(
   '/api/me',
   handleRoute((req, res) => {
@@ -649,6 +711,90 @@ app.get(
     res.json({
       ok: true,
       about: getAboutContent(),
+    });
+  }),
+);
+
+app.get(
+  '/api/game-links',
+  handleRoute((req, res) => {
+    const gameLinks = db.prepare(`
+      ${gameLinkSelect}
+      ORDER BY id ASC
+    `).all();
+
+    res.json({
+      ok: true,
+      gameLinks,
+    });
+  }),
+);
+
+app.post(
+  '/api/game-links',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const row = {
+      name: requiredText(req.body.name, '게임 이름', 100),
+      nickname: requiredText(req.body.nickname, '닉네임', 100),
+      url: requiredUrl(req.body.url, '게임 링크'),
+    };
+
+    const result = db.prepare(`
+      INSERT INTO game_links (name, nickname, url)
+      VALUES (?, ?, ?)
+    `).run(
+      row.name,
+      row.nickname,
+      row.url,
+    );
+
+    res.json({
+      ok: true,
+      id: result.lastInsertRowid,
+    });
+  }),
+);
+
+app.get(
+  '/api/bot-links',
+  handleRoute((req, res) => {
+    const botLinks = db.prepare(`
+      ${botLinkSelect}
+      ORDER BY id ASC
+    `).all();
+
+    res.json({
+      ok: true,
+      botLinks,
+    });
+  }),
+);
+
+app.post(
+  '/api/bot-links',
+  requireLogin,
+  requireJson,
+  handleRoute((req, res) => {
+    const row = {
+      name: requiredText(req.body.name, '봇 이름', 100),
+      feature: requiredText(req.body.feature, '주요 기능', 200),
+      url: requiredUrl(req.body.url, '봇 링크'),
+    };
+
+    const result = db.prepare(`
+      INSERT INTO bot_links (name, feature, url)
+      VALUES (?, ?, ?)
+    `).run(
+      row.name,
+      row.feature,
+      row.url,
+    );
+
+    res.json({
+      ok: true,
+      id: result.lastInsertRowid,
     });
   }),
 );
@@ -1119,15 +1265,19 @@ app.get(
     const bodyLogs = db.prepare(bodyLogSelect).all();
     const inbodyLogs = db.prepare(inbodyLogSelect).all();
     const workoutLogs = db.prepare(workoutLogSelect).all();
+    const gameLinks = db.prepare(gameLinkSelect).all();
+    const botLinks = db.prepare(botLinkSelect).all();
 
     const backup = {
       exportedAt: new Date().toISOString(),
-      version: 3,
+      version: 4,
       profile,
       about,
       bodyLogs,
       inbodyLogs,
       workoutLogs,
+      gameLinks,
+      botLinks,
     };
 
     const filename = `body-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
@@ -1150,12 +1300,16 @@ app.post(
     const bodyLogs = Array.isArray(input.bodyLogs) ? input.bodyLogs : [];
     const inbodyLogs = Array.isArray(input.inbodyLogs) ? input.inbodyLogs : [];
     const workoutLogs = Array.isArray(input.workoutLogs) ? input.workoutLogs : [];
+    const gameLinks = Array.isArray(input.gameLinks) ? input.gameLinks : [];
+    const botLinks = Array.isArray(input.botLinks) ? input.botLinks : [];
     const currentAbout = getAboutContent();
 
     const transaction = db.transaction(() => {
       db.prepare('DELETE FROM body_logs').run();
       db.prepare('DELETE FROM inbody_logs').run();
       db.prepare('DELETE FROM workout_logs').run();
+      db.prepare('DELETE FROM game_links').run();
+      db.prepare('DELETE FROM bot_links').run();
 
       db.prepare(`
         UPDATE profile
@@ -1260,6 +1414,32 @@ app.post(
           optionalNumber(log.weightKg),
           optionalNumber(log.durationMin),
           optionalText(log.memo, 500),
+        );
+      }
+
+      const insertGameLink = db.prepare(`
+        INSERT INTO game_links (name, nickname, url)
+        VALUES (?, ?, ?)
+      `);
+
+      for (const link of gameLinks) {
+        insertGameLink.run(
+          requiredText(link.name, '게임 이름', 100),
+          requiredText(link.nickname, '닉네임', 100),
+          requiredUrl(link.url, '게임 링크'),
+        );
+      }
+
+      const insertBotLink = db.prepare(`
+        INSERT INTO bot_links (name, feature, url)
+        VALUES (?, ?, ?)
+      `);
+
+      for (const link of botLinks) {
+        insertBotLink.run(
+          requiredText(link.name, '봇 이름', 100),
+          requiredText(link.feature, '주요 기능', 200),
+          requiredUrl(link.url, '봇 링크'),
         );
       }
     });

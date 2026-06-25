@@ -5,6 +5,8 @@ const state = {
   about: null,
   profile: null,
   inbodyLogs: [],
+  gameLinks: [],
+  botLinks: [],
   summary: null,
 };
 
@@ -365,12 +367,72 @@ function formatChartDateLabel(dateText) {
   return `${month}-${day}`;
 }
 
+function formatAxisValue(value, suffix = '') {
+  if (!Number.isFinite(value)) {
+    return '';
+  }
+
+  const rounded = Math.round(value * 10) / 10;
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+
+  return `${text}${suffix}`;
+}
+
+function ensureChartShell(canvas) {
+  const existingShell = canvas.closest('.chart-shell');
+
+  if (existingShell) {
+    return {
+      shell: existingShell,
+      yAxis: existingShell.querySelector('.chart-y-axis'),
+      plot: existingShell.querySelector('.chart-plot'),
+      xAxis: existingShell.querySelector('.chart-x-axis'),
+    };
+  }
+
+  const shell = document.createElement('div');
+  shell.className = 'chart-shell';
+
+  const yAxis = document.createElement('div');
+  yAxis.className = 'chart-y-axis';
+
+  const plot = document.createElement('div');
+  plot.className = 'chart-plot';
+
+  const xAxis = document.createElement('div');
+  xAxis.className = 'chart-x-axis';
+
+  canvas.parentNode.insertBefore(shell, canvas);
+  plot.appendChild(canvas);
+
+  shell.appendChild(yAxis);
+  shell.appendChild(plot);
+  shell.appendChild(xAxis);
+
+  return {
+    shell,
+    yAxis,
+    plot,
+    xAxis,
+  };
+}
+
 function prepareChartCanvas(canvas) {
   const dpr = window.devicePixelRatio || 1;
-  const cssWidth = canvas.clientWidth || canvas.width;
-  const cssHeight = canvas.clientHeight || canvas.height;
-  const pixelWidth = Math.max(1, Math.round(cssWidth * dpr));
-  const pixelHeight = Math.max(1, Math.round(cssHeight * dpr));
+  const rect = canvas.getBoundingClientRect();
+
+  const cssWidth = Math.max(
+    1,
+    Math.round(rect.width || canvas.clientWidth || canvas.width || 300),
+  );
+
+  const cssHeight = Math.max(
+    1,
+    Math.round(rect.height || canvas.clientHeight || canvas.height || 220),
+  );
+
+  const pixelWidth = Math.round(cssWidth * dpr);
+  const pixelHeight = Math.round(cssHeight * dpr);
 
   if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
     canvas.width = pixelWidth;
@@ -396,6 +458,12 @@ function drawMetricLineChart(canvas, rows, valueKey, options = {}) {
     suffix = '',
     minRange = 1,
   } = options;
+
+  const {
+    yAxis,
+    xAxis,
+  } = ensureChartShell(canvas);
+
   const {
     ctx,
     width,
@@ -404,35 +472,35 @@ function drawMetricLineChart(canvas, rows, valueKey, options = {}) {
 
   ctx.clearRect(0, 0, width, height);
 
+  // 최신 5개만 표시.
+  // 정렬은 오래된 날짜 → 최신 날짜 순서로 유지해서 그래프가 자연스럽게 왼쪽에서 오른쪽으로 흐름.
   const points = sortAscByDate(rows)
     .map((row) => ({
       date: row.date,
       value: Number(row[valueKey]),
     }))
-    .filter((point) => Number.isFinite(point.value));
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '16px system-ui, sans-serif';
+    .filter((point) => Number.isFinite(point.value))
+    .slice(-5);
 
   if (points.length === 0) {
-    ctx.fillText('아직 기록이 없습니다.', 28, 46);
+    yAxis.innerHTML = '';
+    xAxis.innerHTML = '';
+
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '16px "Segoe UI", Arial, sans-serif';
+    ctx.fillText('아직 기록이 없습니다.', 12, 32);
     return;
   }
 
   const values = points.map((point) => point.value);
-  const horizontalInset = Math.max(44, Math.min(72, width * 0.08));
-  const chartPadding = {
-    top: 42,
-    right: horizontalInset,
-    bottom: points.length > 6 ? 68 : 52,
-    left: horizontalInset,
-  };
   const rawMin = Math.min(...values);
   const rawMax = Math.max(...values);
   const rawRange = rawMax - rawMin;
+
   const baseRange = Math.max(rawRange, minRange);
   const verticalPadding = Math.max(baseRange * 0.12, minRange * 0.05);
   const center = (rawMin + rawMax) / 2;
+
   let min = center - baseRange / 2 - verticalPadding;
   let max = center + baseRange / 2 + verticalPadding;
 
@@ -441,32 +509,53 @@ function drawMetricLineChart(canvas, rows, valueKey, options = {}) {
     min = 0;
   }
 
+  const plotPadding = {
+    top: 10,
+    right: 8,
+    bottom: 10,
+    left: 8,
+  };
+
+  const plotWidth = width - plotPadding.left - plotPadding.right;
+  const plotHeight = height - plotPadding.top - plotPadding.bottom;
+
   const xFor = (index) => {
     if (points.length === 1) {
       return width / 2;
     }
 
-    return chartPadding.left + (index / (points.length - 1)) * (width - chartPadding.left - chartPadding.right);
+    return plotPadding.left + (index / (points.length - 1)) * plotWidth;
   };
 
   const yFor = (value) => {
-    return (
-      height -
-      chartPadding.bottom -
-      ((value - min) / (max - min)) * (height - chartPadding.top - chartPadding.bottom)
-    );
+    return plotPadding.top + ((max - value) / (max - min)) * plotHeight;
   };
 
-  ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+  const tickCount = 4;
+  const yTicks = Array.from({ length: tickCount }, (_, index) => {
+    const ratio = index / (tickCount - 1);
+    return max - ratio * (max - min);
+  });
+
+  yAxis.innerHTML = yTicks
+    .map((value) => `<span>${esc(formatAxisValue(value, suffix))}</span>`)
+    .join('');
+
+  xAxis.innerHTML = points
+    .map((point) => `<span>${esc(formatChartDateLabel(point.date))}</span>`)
+    .join('');
+
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.24)';
   ctx.lineWidth = 1;
 
-  for (let i = 0; i < 4; i += 1) {
-    const y = chartPadding.top + i * ((height - chartPadding.top - chartPadding.bottom) / 3);
+  yTicks.forEach((value) => {
+    const y = yFor(value);
+
     ctx.beginPath();
-    ctx.moveTo(chartPadding.left, y);
-    ctx.lineTo(width - chartPadding.right, y);
+    ctx.moveTo(plotPadding.left, y);
+    ctx.lineTo(width - plotPadding.right, y);
     ctx.stroke();
-  }
+  });
 
   ctx.strokeStyle = '#38bdf8';
   ctx.lineWidth = 3;
@@ -495,36 +584,6 @@ function drawMetricLineChart(canvas, rows, valueKey, options = {}) {
     ctx.arc(x, y, 4, 0, Math.PI * 2);
     ctx.fill();
   });
-
-  const latest = points.at(-1);
-
-  ctx.fillStyle = '#e5e7eb';
-  ctx.font = '700 18px system-ui, sans-serif';
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'alphabetic';
-  ctx.fillText(`${latest.value}${suffix}`, chartPadding.left, 32);
-
-  ctx.fillStyle = '#94a3b8';
-  ctx.font = '11px system-ui, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-
-  points.forEach((point, index) => {
-    const x = xFor(index);
-    const y = height - chartPadding.bottom + 10;
-    const label = formatChartDateLabel(point.date);
-
-    if (points.length > 6) {
-      ctx.save();
-      ctx.translate(x, y);
-      ctx.rotate(-Math.PI / 6);
-      ctx.fillText(label, 0, 0);
-      ctx.restore();
-      return;
-    }
-
-    ctx.fillText(label, x, y);
-  });
 }
 
 function renderDashboard(summary) {
@@ -546,6 +605,7 @@ function renderDashboard(summary) {
     suffix: 'kg',
     minRange: 5,
   });
+
   drawMetricLineChart($('#fatChart'), state.inbodyLogs, 'bodyFatPercent', {
     suffix: '%',
     minRange: 8,
@@ -633,6 +693,46 @@ function renderAbout() {
   form.interest.value = about.interest || '';
   form.focus.value = about.focus || '';
   form.site.value = about.site || '';
+}
+
+function renderLinkEntries(container, entries, options = {}) {
+  if (!container) {
+    return;
+  }
+
+  const {
+    metaKey,
+    emptyText,
+  } = options;
+
+  if (!entries.length) {
+    container.innerHTML = `<div class="link-empty">${esc(emptyText)}</div>`;
+    return;
+  }
+
+  container.innerHTML = entries
+    .map((entry) => `
+      <div class="link-entry">
+        <div class="link-entry-copy">
+          <span class="link-entry-name">${esc(entry.name)}</span>
+          <span class="link-entry-meta">${esc(entry[metaKey])}</span>
+        </div>
+        <a class="link-entry-action" href="${esc(entry.url)}" target="_blank" rel="noreferrer">이동</a>
+      </div>
+    `)
+    .join('');
+}
+
+function renderLinkPanels() {
+  renderLinkEntries($('#gameLinkList'), state.gameLinks, {
+    metaKey: 'nickname',
+    emptyText: '아직 추가된 게임 프로필이 없습니다.',
+  });
+
+  renderLinkEntries($('#botLinkList'), state.botLinks, {
+    metaKey: 'feature',
+    emptyText: '아직 추가된 디스코드 봇이 없습니다.',
+  });
 }
 
 function renderInbodyTable() {
@@ -739,12 +839,14 @@ function applyInitialHash() {
 }
 
 async function loadAll() {
-  const [me, aboutData, profileData, inbodyData, summaryData] = await Promise.all([
+  const [me, aboutData, profileData, inbodyData, summaryData, gameLinksData, botLinksData] = await Promise.all([
     api('/api/me'),
     api('/api/about'),
     api('/api/profile'),
     api('/api/inbody-logs'),
     api('/api/summary'),
+    api('/api/game-links'),
+    api('/api/bot-links'),
   ]);
 
   setLoggedIn(me.loggedIn);
@@ -755,9 +857,12 @@ async function loadAll() {
   state.about = aboutData.about;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
+  state.gameLinks = gameLinksData.gameLinks;
+  state.botLinks = botLinksData.botLinks;
   state.summary = summaryData.summary;
 
   renderAbout();
+  renderLinkPanels();
   renderProfile();
   renderInbodyTable();
   renderDashboard(state.summary);
@@ -776,6 +881,35 @@ document.querySelectorAll('.main-tab-button').forEach((button) => {
 document.querySelectorAll('.main-tab-link').forEach((button) => {
   button.addEventListener('click', () => {
     switchMainTab(button.dataset.mainTabLink);
+  });
+});
+
+function toggleLinkPanel(panelName) {
+  const panelWrap = $('#linkPanels');
+  const toggleButtons = document.querySelectorAll('[data-link-panel-toggle]');
+  const panels = document.querySelectorAll('.link-subpanel');
+  const activePanelName = panelWrap?.dataset.activePanel || '';
+  const nextPanelName = activePanelName === panelName ? '' : panelName;
+
+  if (panelWrap) {
+    panelWrap.hidden = !nextPanelName;
+    panelWrap.dataset.activePanel = nextPanelName;
+  }
+
+  toggleButtons.forEach((button) => {
+    const isActive = button.dataset.linkPanelToggle === nextPanelName;
+    button.classList.toggle('active', isActive);
+    button.setAttribute('aria-expanded', String(isActive));
+  });
+
+  panels.forEach((panel) => {
+    panel.hidden = panel.dataset.linkPanel !== nextPanelName;
+  });
+}
+
+document.querySelectorAll('[data-link-panel-toggle]').forEach((button) => {
+  button.addEventListener('click', () => {
+    toggleLinkPanel(button.dataset.linkPanelToggle);
   });
 });
 
@@ -843,6 +977,44 @@ $('#aboutForm')?.addEventListener('submit', async (event) => {
     });
 
     showToast('소개 저장 완료');
+    await loadAll();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#gameLinkForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  try {
+    await api('/api/game-links', {
+      method: 'POST',
+      body: getFormData(form),
+    });
+
+    showToast('게임 링크 추가 완료');
+    form.reset();
+    await loadAll();
+  } catch (error) {
+    showToast(error.message);
+  }
+});
+
+$('#botLinkForm')?.addEventListener('submit', async (event) => {
+  event.preventDefault();
+
+  const form = event.currentTarget;
+
+  try {
+    await api('/api/bot-links', {
+      method: 'POST',
+      body: getFormData(form),
+    });
+
+    showToast('봇 링크 추가 완료');
+    form.reset();
     await loadAll();
   } catch (error) {
     showToast(error.message);
