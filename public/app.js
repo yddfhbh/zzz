@@ -5,6 +5,7 @@ const state = {
   about: null,
   profile: null,
   inbodyLogs: [],
+  summary: null,
 };
 
 function today() {
@@ -231,10 +232,21 @@ function drawLineChart(canvas, rows, valueKey, suffix = '') {
     return;
   }
 
-  const ctx = canvas.getContext('2d');
-  const width = canvas.width;
-  const height = canvas.height;
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
 
+  if (
+    canvas.width !== Math.round(width * dpr) ||
+    canvas.height !== Math.round(height * dpr)
+  ) {
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, width, height);
 
   const points = sortAscByDate(rows)
@@ -257,9 +269,23 @@ function drawLineChart(canvas, rows, valueKey, suffix = '') {
   let min = Math.min(...values);
   let max = Math.max(...values);
 
+  const minSpanByKey = {
+    weightKg: 5,
+    bodyFatPercent: 8,
+    muscleKg: 4,
+    bmi: 3,
+  };
+
+  const minSpan = minSpanByKey[valueKey] || 1;
+
   if (min === max) {
-    min -= 1;
-    max += 1;
+    min -= minSpan / 2;
+    max += minSpan / 2;
+  } else {
+    const center = (min + max) / 2;
+    const span = Math.max(max - min, minSpan);
+    min = center - span / 2;
+    max = center + span / 2;
   }
 
   const xFor = (index) => {
@@ -321,7 +347,184 @@ function drawLineChart(canvas, rows, valueKey, suffix = '') {
 
   ctx.fillStyle = '#94a3b8';
   ctx.font = '13px system-ui, sans-serif';
-  ctx.fillText(`${points[0].date} → ${latest.date}`, padding, height - 14);
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const label = String(point.date || '').slice(5);
+    ctx.fillText(label, x - 12, height - 14);
+  });
+}
+
+function formatChartDateLabel(dateText) {
+  const [year, month, day] = String(dateText || '').split('-');
+
+  if (!year || !month || !day) {
+    return String(dateText || '');
+  }
+
+  return `${month}-${day}`;
+}
+
+function prepareChartCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1;
+  const cssWidth = canvas.clientWidth || canvas.width;
+  const cssHeight = canvas.clientHeight || canvas.height;
+  const pixelWidth = Math.max(1, Math.round(cssWidth * dpr));
+  const pixelHeight = Math.max(1, Math.round(cssHeight * dpr));
+
+  if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
+    canvas.width = pixelWidth;
+    canvas.height = pixelHeight;
+  }
+
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  return {
+    ctx,
+    width: cssWidth,
+    height: cssHeight,
+  };
+}
+
+function drawMetricLineChart(canvas, rows, valueKey, options = {}) {
+  if (!canvas) {
+    return;
+  }
+
+  const {
+    suffix = '',
+    minRange = 1,
+  } = options;
+  const {
+    ctx,
+    width,
+    height,
+  } = prepareChartCanvas(canvas);
+
+  ctx.clearRect(0, 0, width, height);
+
+  const points = sortAscByDate(rows)
+    .map((row) => ({
+      date: row.date,
+      value: Number(row[valueKey]),
+    }))
+    .filter((point) => Number.isFinite(point.value));
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '16px system-ui, sans-serif';
+
+  if (points.length === 0) {
+    ctx.fillText('아직 기록이 없습니다.', 28, 46);
+    return;
+  }
+
+  const values = points.map((point) => point.value);
+  const horizontalInset = Math.max(44, Math.min(72, width * 0.08));
+  const chartPadding = {
+    top: 42,
+    right: horizontalInset,
+    bottom: points.length > 6 ? 68 : 52,
+    left: horizontalInset,
+  };
+  const rawMin = Math.min(...values);
+  const rawMax = Math.max(...values);
+  const rawRange = rawMax - rawMin;
+  const baseRange = Math.max(rawRange, minRange);
+  const verticalPadding = Math.max(baseRange * 0.12, minRange * 0.05);
+  const center = (rawMin + rawMax) / 2;
+  let min = center - baseRange / 2 - verticalPadding;
+  let max = center + baseRange / 2 + verticalPadding;
+
+  if (min < 0) {
+    max += Math.abs(min);
+    min = 0;
+  }
+
+  const xFor = (index) => {
+    if (points.length === 1) {
+      return width / 2;
+    }
+
+    return chartPadding.left + (index / (points.length - 1)) * (width - chartPadding.left - chartPadding.right);
+  };
+
+  const yFor = (value) => {
+    return (
+      height -
+      chartPadding.bottom -
+      ((value - min) / (max - min)) * (height - chartPadding.top - chartPadding.bottom)
+    );
+  };
+
+  ctx.strokeStyle = 'rgba(148, 163, 184, 0.28)';
+  ctx.lineWidth = 1;
+
+  for (let i = 0; i < 4; i += 1) {
+    const y = chartPadding.top + i * ((height - chartPadding.top - chartPadding.bottom) / 3);
+    ctx.beginPath();
+    ctx.moveTo(chartPadding.left, y);
+    ctx.lineTo(width - chartPadding.right, y);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = '#38bdf8';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = yFor(point.value);
+
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+
+  ctx.stroke();
+
+  ctx.fillStyle = '#e5e7eb';
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = yFor(point.value);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const latest = points.at(-1);
+
+  ctx.fillStyle = '#e5e7eb';
+  ctx.font = '700 18px system-ui, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText(`${latest.value}${suffix}`, chartPadding.left, 32);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '11px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  points.forEach((point, index) => {
+    const x = xFor(index);
+    const y = height - chartPadding.bottom + 10;
+    const label = formatChartDateLabel(point.date);
+
+    if (points.length > 6) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-Math.PI / 6);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
+      return;
+    }
+
+    ctx.fillText(label, x, y);
+  });
 }
 
 function renderDashboard(summary) {
@@ -339,8 +542,14 @@ function renderDashboard(summary) {
 
   $('#latestInbodyDate').textContent = summary.latestInbody?.date || '-';
 
-  drawLineChart($('#weightChart'), state.inbodyLogs, 'weightKg', 'kg');
-  drawLineChart($('#fatChart'), state.inbodyLogs, 'bodyFatPercent', '%');
+  drawMetricLineChart($('#weightChart'), state.inbodyLogs, 'weightKg', {
+    suffix: 'kg',
+    minRange: 5,
+  });
+  drawMetricLineChart($('#fatChart'), state.inbodyLogs, 'bodyFatPercent', {
+    suffix: '%',
+    minRange: 8,
+  });
 }
 
 function getEntryTimestamp(row) {
@@ -546,11 +755,12 @@ async function loadAll() {
   state.about = aboutData.about;
   state.profile = profileData.profile;
   state.inbodyLogs = inbodyData.inbodyLogs;
+  state.summary = summaryData.summary;
 
   renderAbout();
   renderProfile();
   renderInbodyTable();
-  renderDashboard(summaryData.summary);
+  renderDashboard(state.summary);
 
   resetForm('inbodyForm');
 
@@ -769,6 +979,14 @@ $('#importFile')?.addEventListener('change', async (event) => {
 
 window.addEventListener('hashchange', () => {
   applyInitialHash();
+});
+
+window.addEventListener('resize', () => {
+  if (!state.summary) {
+    return;
+  }
+
+  renderDashboard(state.summary);
 });
 
 initHeroTyping();
