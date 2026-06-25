@@ -725,6 +725,31 @@ function normalizeProjectBullets(value) {
     .filter(Boolean);
 }
 
+function createEmptyProject() {
+  return {
+    badge: '',
+    title: '',
+    description: '',
+    bullets: [],
+    isCurrent: false,
+  };
+}
+
+function collectProjectDrafts() {
+  const rows = Array.from(document.querySelectorAll('[data-project-editor-row]'));
+
+  return rows.map((row) => ({
+    badge: row.querySelector('[name="badge"]')?.value.trim() || '',
+    title: row.querySelector('[name="title"]')?.value.trim() || '',
+    description: row.querySelector('[name="description"]')?.value.trim() || '',
+    bullets: String(row.querySelector('[name="bullets"]')?.value || '')
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .filter(Boolean),
+    isCurrent: row.querySelector('[name="isCurrent"]')?.checked || false,
+  }));
+}
+
 function renderProjects() {
   const projectGrid = $('#projectGrid');
   const editorList = $('#projectEditorList');
@@ -1085,17 +1110,7 @@ $('#aboutForm')?.addEventListener('submit', async (event) => {
 $('#projectForm')?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
-  const rows = Array.from(document.querySelectorAll('[data-project-editor-row]'));
-  const projects = rows.map((row) => ({
-    badge: row.querySelector('[name="badge"]')?.value.trim() || '',
-    title: row.querySelector('[name="title"]')?.value.trim() || '',
-    description: row.querySelector('[name="description"]')?.value.trim() || '',
-    bullets: String(row.querySelector('[name="bullets"]')?.value || '')
-      .split(/\r?\n/)
-      .map((item) => item.trim())
-      .filter(Boolean),
-    isCurrent: row.querySelector('[name="isCurrent"]')?.checked || false,
-  }));
+  const projects = collectProjectDrafts();
 
   try {
     await api('/api/projects', {
@@ -1108,6 +1123,19 @@ $('#projectForm')?.addEventListener('submit', async (event) => {
   } catch (error) {
     showToast(error.message);
   }
+});
+
+$('#projectAddButton')?.addEventListener('click', () => {
+  const drafts = collectProjectDrafts();
+
+  if (drafts.length >= 20) {
+    showToast('프로젝트는 최대 20개까지 추가할 수 있습니다.');
+    return;
+  }
+
+  state.projects = [...drafts, createEmptyProject()];
+  renderHomeCurrent();
+  renderProjects();
 });
 
 $('#gameLinkForm')?.addEventListener('submit', async (event) => {
