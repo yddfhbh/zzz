@@ -746,6 +746,44 @@ function normalizeProjectBullets(value) {
     .filter(Boolean);
 }
 
+function getProjectLinkLabel(project) {
+  const badge = String(project?.badge || '').trim().toUpperCase();
+  const title = String(project?.title || '').trim().toUpperCase();
+  const urlText = String(project?.url || '').trim();
+
+  let hostname = '';
+
+  if (urlText) {
+    try {
+      hostname = new URL(urlText).hostname.toLowerCase();
+    } catch {
+      hostname = '';
+    }
+  }
+
+  if (hostname.includes('github.com')) {
+    return 'GitHub 열기';
+  }
+
+  if (hostname.includes('discord.gg') || hostname.includes('discord.com')) {
+    return 'Discord 열기';
+  }
+
+  if (badge.includes('GAME')) {
+    return '게임하러 가기';
+  }
+
+  if (badge === 'WEB' || badge.startsWith('WEB ') || badge.includes(' SITE') || title.includes('HOME')) {
+    return '사이트 열기';
+  }
+
+  if (badge.includes('BOT') || title.includes('BOT')) {
+    return '봇 보러 가기';
+  }
+
+  return '프로젝트 열기';
+}
+
 function createEmptyProject() {
   return {
     badge: '',
@@ -792,7 +830,7 @@ function renderProjects() {
                 target="_blank"
                 rel="noreferrer"
                 title="${esc(project.url)}"
-              >링크 열기</a>
+              >${esc(getProjectLinkLabel(project))}</a>
             ` : ''}
           </div>
           <p>${esc(project.description)}</p>
