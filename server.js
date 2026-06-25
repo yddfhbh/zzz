@@ -170,58 +170,60 @@ const defaultAboutContent = {
 };
 
 const defaultHomeCurrentItems = [
+  'Chesubu',
   'Kannyan Discord Bot',
-  'TETR.IO Profile Card',
-  'Chess Tools',
-  'Health Tracker',
+  'Nyannyan Problem Bot',
+  'Personal Home + Health',
 ];
 
 const defaultProjects = [
   {
-    badge: 'Discord',
-    title: 'Kannyan Discord Bot',
-    description: 'Gemini/Gemma 기반 채팅, TETR.IO 카드, 리더보드, 체스, 일일 퍼즐 등을 처리하는 디스코드 봇.',
+    badge: 'WEB GAME',
+    title: 'Chesubu',
+    description: '브라우저에서 바로 체스 대국을 진행할 수 있는 온라인 체스 사이트.',
     bullets: [
-      'Gemini/Gemma 응답',
-      'TETR.IO 프로필 카드',
-      '체스 이미지 인식 및 대국',
-      '일일 체스 퍼즐',
+      '실시간 체스판 조작',
+      '합법 수 검증',
+      'Stockfish 기반 AI 대국',
+      '웹 기반 체스 인터페이스',
     ],
     isCurrent: 1,
   },
   {
-    badge: 'TETR.IO',
-    title: 'TETR.IO Tools',
-    description: '유저 데이터, 리그 통계, 프로필 카드, 캐시, 리더보드 출력을 다루는 도구들.',
+    badge: 'DISCORD BOT',
+    title: 'Kannyan Discord Bot',
+    description: 'Gemini/Gemma 채팅, TETR.IO 도구, 체스 분석 기능을 한곳에 모은 개인 디스코드 봇.',
     bullets: [
-      '프로필 카드 SVG/PNG 생성',
-      '리그 데이터 캐시',
-      'APM/PPS/VS/Glicko/RD 리더보드',
+      'Gemini/Gemma 대화 응답',
+      'TETR.IO 프로필/스탯 카드 생성',
+      '체스 이미지 분석 및 Stockfish 연동',
+      '일일 체스 퍼즐과 알람 기능',
     ],
-    isCurrent: 0,
+    isCurrent: 1,
   },
   {
-    badge: 'Chess',
-    title: 'Chess Tools',
-    description: '체스판 이미지에서 FEN을 추출하고 Stockfish와 연결해서 분석/대국을 지원.',
+    badge: 'EDUCATION',
+    title: 'Nyannyan Problem Bot',
+    description: '과외 문제를 단원별로 정리하고, 정답 선택까지 관리할 수 있는 디스코드 문제 정리 봇.',
     bullets: [
-      '이미지 → FEN',
-      'Stockfish 연동',
-      '디스코드 체스 대국',
+      '문제 이미지 업로드',
+      '단원별 채널 자동 정리',
+      '1~4번 반응으로 정답 기록',
+      '문제 이동 및 재분류 지원',
     ],
     isCurrent: 1,
   },
   {
     badge: 'Web',
     title: 'Personal Home + Health',
-    description: '개인 홈페이지에 몸무게와 인바디 기록 기능을 붙인 웹사이트.',
+    description: '개인 홈페이지와 인바디 기록 관리를 함께 담은 웹사이트.',
     bullets: [
-      'Node.js Express',
-      'SQLite 저장',
+      'Node.js Express 서버',
+      'SQLite 기반 데이터 저장',
       '관리자 로그인',
-      '공개 조회 / 로그인 수정',
+      '체중/골격근량/체지방률 그래프',
     ],
-    isCurrent: 0,
+    isCurrent: 1,
   },
 ];
 
