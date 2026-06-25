@@ -5,7 +5,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import connectSqlite3 from 'connect-sqlite3';
 import express from 'express';
 import session from 'express-session';
 import Database from 'better-sqlite3';
@@ -25,14 +24,9 @@ const dataDir = path.resolve(process.env.BODY_TRACKER_DATA_DIR || defaultDataDir
 const publicDir = path.join(__dirname, 'public');
 const dbPath = path.join(dataDir, 'body-tracker.sqlite');
 
-const sessionDir = path.join(dataDir, 'sessions');
-
 fs.mkdirSync(dataDir, { recursive: true });
-fs.mkdirSync(sessionDir, { recursive: true });
 
 console.log(`[body-tracker] data dir: ${dataDir}`);
-
-const SQLiteStore = connectSqlite3(session);
 
 const adminPassword = process.env.ADMIN_PASSWORD || '';
 
@@ -59,7 +53,25 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 7;
+const SESSION_PRUNE_INTERVAL_MS = 1000 * 60 * 5;
+
+const sessionCookieOptions = {
+  httpOnly: true,
+  sameSite: 'strict',
+  secure: isProduction,
+  path: '/',
+  maxAge: SESSION_TTL_MS,
+};
+
 db.exec(`
+  CREATE TABLE IF NOT EXISTS sessions (
+    sid TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    expires_at_ms INTEGER NOT NULL,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS profile (
     id INTEGER PRIMARY KEY CHECK (id = 1),
     height_cm REAL,
@@ -311,6 +323,114 @@ function migrateProjectsTable() {
 
 migrateProjectsTable();
 
+let lastSessionPruneAt = 0;
+
+function pruneExpiredSessions(now = Date.now()) {
+  if (now - lastSessionPruneAt < SESSION_PRUNE_INTERVAL_MS) {
+    return;
+  }
+
+  db.prepare(`
+    DELETE FROM sessions
+    WHERE expires_at_ms <= ?
+  `).run(now);
+
+  lastSessionPruneAt = now;
+}
+
+function getSessionExpiryMs(sessionData) {
+  const cookie = sessionData?.cookie || {};
+
+  if (cookie.expires) {
+    const expiresAt = new Date(cookie.expires).getTime();
+
+    if (Number.isFinite(expiresAt)) {
+      return expiresAt;
+    }
+  }
+
+  const maxAge = Number(cookie.maxAge);
+
+  if (Number.isFinite(maxAge) && maxAge > 0) {
+    return Date.now() + maxAge;
+  }
+
+  return Date.now() + SESSION_TTL_MS;
+}
+
+class BetterSqliteSessionStore extends session.Store {
+  constructor(database) {
+    super();
+    this.db = database;
+    this.getStmt = this.db.prepare(`
+      SELECT data, expires_at_ms AS expiresAtMs
+      FROM sessions
+      WHERE sid = ?
+    `);
+    this.setStmt = this.db.prepare(`
+      INSERT INTO sessions (sid, data, expires_at_ms, updated_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(sid) DO UPDATE SET
+        data = excluded.data,
+        expires_at_ms = excluded.expires_at_ms,
+        updated_at = CURRENT_TIMESTAMP
+    `);
+    this.destroyStmt = this.db.prepare(`
+      DELETE FROM sessions
+      WHERE sid = ?
+    `);
+  }
+
+  get(sid, callback) {
+    try {
+      const now = Date.now();
+      pruneExpiredSessions(now);
+
+      const row = this.getStmt.get(sid);
+
+      if (!row) {
+        callback(null, null);
+        return;
+      }
+
+      if (row.expiresAtMs <= now) {
+        this.destroyStmt.run(sid);
+        callback(null, null);
+        return;
+      }
+
+      callback(null, JSON.parse(row.data));
+    } catch (error) {
+      callback(error);
+    }
+  }
+
+  set(sid, sessionData, callback) {
+    try {
+      pruneExpiredSessions();
+      this.setStmt.run(sid, JSON.stringify(sessionData), getSessionExpiryMs(sessionData));
+      callback?.(null);
+    } catch (error) {
+      callback?.(error);
+    }
+  }
+
+  destroy(sid, callback) {
+    try {
+      this.destroyStmt.run(sid);
+      callback?.(null);
+    } catch (error) {
+      callback?.(error);
+    }
+  }
+
+  touch(sid, sessionData, callback) {
+    this.set(sid, sessionData, callback);
+  }
+}
+
+const sessionStore = new BetterSqliteSessionStore(db);
+
 function seedHomeCurrentItems() {
   const row = db.prepare(`
     SELECT COUNT(*) AS count
@@ -425,19 +545,12 @@ app.use(express.json({ limit: '2mb' }));
 app.use(
   session({
     name: 'bt.sid',
-    store: new SQLiteStore({
-      db: 'sessions.sqlite',
-      dir: sessionDir,
-    }),
+    store: sessionStore,
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: isProduction,
-      maxAge: 1000 * 60 * 60 * 24 * 7,
-    },
+    proxy: isProduction,
+    cookie: sessionCookieOptions,
   }),
 );
 
@@ -459,10 +572,16 @@ app.use((req, res, next) => {
     ].join('; '),
   );
   res.setHeader('Cross-Origin-Resource-Policy', 'same-origin');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  res.setHeader('Origin-Agent-Cluster', '?1');
   res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   res.setHeader('Referrer-Policy', 'same-origin');
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
+
+  if (isProduction) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
 
   if (req.path.startsWith('/api/')) {
     res.setHeader('Cache-Control', 'no-store');
@@ -917,8 +1036,18 @@ app.post(
 );
 
 app.post('/api/logout', (req, res) => {
-  req.session.destroy(() => {
-    res.json({
+  req.session.destroy((error) => {
+    res.clearCookie('bt.sid', sessionCookieOptions);
+
+    if (error) {
+      return res.status(500).json({
+        ok: false,
+        error: 'SERVER_ERROR',
+        message: '로그아웃 처리 중 오류가 발생했습니다.',
+      });
+    }
+
+    return res.json({
       ok: true,
     });
   });
@@ -1937,6 +2066,7 @@ app.use((req, res) => {
     });
   }
 
+  res.setHeader('Cache-Control', 'no-store');
   return res.sendFile(path.join(publicDir, 'index.html'));
 });
 
