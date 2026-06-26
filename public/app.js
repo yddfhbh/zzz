@@ -104,9 +104,8 @@ function initHeroTyping() {
   }
 
   const fullText = title.textContent ?? '';
-  const shouldUseStatic =
-    window.matchMedia('(max-width: 640px)').matches ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const isMobileViewport = window.matchMedia('(max-width: 640px)').matches;
+  const shouldUseStatic = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const renderStatic = () => {
     heading.classList.remove('is-typing');
@@ -123,7 +122,7 @@ function initHeroTyping() {
   const caretWidth = caret.getBoundingClientRect().width || 0;
   const gapWidth = 6;
 
-  if (titleWidth + caretWidth + gapWidth > heading.clientWidth) {
+  if (!isMobileViewport && titleWidth + caretWidth + gapWidth > heading.clientWidth) {
     renderStatic();
     return;
   }

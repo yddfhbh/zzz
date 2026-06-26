@@ -1779,6 +1779,24 @@ body.is-admin .login-form {
 }
 
 
+@media (max-width: 760px) {
+  .main-tabs #siteTitle {
+    display: block;
+    font-size: clamp(34px, 10vw, 44px);
+    white-space: normal;
+    line-height: 1.2;
+    padding-bottom: 0.24em;
+    overflow: visible;
+    color: #f7f5ff !important;
+    background: none !important;
+    -webkit-text-fill-color: #f7f5ff !important;
+    -webkit-background-clip: initial !important;
+    background-clip: initial !important;
+    text-shadow: none !important;
+    animation: none !important;
+  }
+}
+
 @media (max-width: 640px) {
   .site-header,
   .site-main,
@@ -1788,16 +1806,7 @@ body.is-admin .login-form {
   }
 
   #siteTitle {
-    font-size: clamp(34px, 10vw, 44px);
-    white-space: normal;
-    line-height: 1.14;
-    padding-bottom: 0.18em;
-    color: #f7f5ff;
-    background: none;
-    -webkit-text-fill-color: currentColor;
-    -webkit-background-clip: border-box;
-    background-clip: border-box;
-    animation: none;
+    letter-spacing: -0.02em;
   }
 
   .main-tabs {
@@ -1906,7 +1915,11 @@ body.is-admin .login-form {
 }
  
   .typing-heading {
-    display: block;
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    column-gap: 6px;
+    row-gap: 4px;
   }
 
   .typing-title {
@@ -1915,6 +1928,6 @@ body.is-admin .login-form {
   }
 
   .typing-caret {
-    display: none;
+    display: inline-block;
   }
 }
