@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Cormorant+SC:wght@700&family=Gowun+Dodum&family=Hahmlet:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&family=Marcellus+SC&family=Noto+Serif+KR:wght@600;700;900&family=Raleway:wght@300;500;600;700;800;900&family=Uncial+Antiqua&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Cormorant+SC:wght@700&family=Gowun+Dodum&family=Hahmlet:wght@500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&family=Marcellus+SC&family=Noto+Sans+KR:wght@400;500;700;800;900&family=Noto+Serif+KR:wght@600;700;900&family=Raleway:wght@300;500;600;700;800;900&family=Uncial+Antiqua&display=swap");
 
 
 @import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css");
@@ -50,7 +50,7 @@ body {
   min-height: 100vh;
   background: #11102a;
   color: var(--text);
-    font-family:
+  font-family:
     "Pretendard",
     "Noto Sans KR",
     Inter,
@@ -244,7 +244,9 @@ p {
 
 #siteTitle {
   position: relative;
+  display: inline-block;
   margin: 0;
+  padding-bottom: 0.08em;
 
   font-family:
     "Marcellus SC",
@@ -521,8 +523,9 @@ p {
   box-shadow: none;
 
   font-family:
-    "Raleway",
     "Pretendard",
+    "Noto Sans KR",
+    "Raleway",
     sans-serif;
   font-size: 20px;
   font-weight: 800;
@@ -1631,9 +1634,10 @@ body.is-admin .login-form {
   border-top: 1px solid var(--line);
   font-size: 14px;
 
-    font-family:
-    "Raleway",
+  font-family:
     "Pretendard",
+    "Noto Sans KR",
+    "Raleway",
     sans-serif;
   font-weight: 300;
   letter-spacing: 0.01em;
@@ -1785,7 +1789,7 @@ body.is-admin .login-form {
   #siteTitle {
     font-size: clamp(34px, 10vw, 44px);
     white-space: normal;
-    line-height: 0.94;
+    line-height: 1.06;
   }
 
   .main-tabs {
