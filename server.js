@@ -2188,6 +2188,11 @@ app.post(
 app.use(express.static(publicDir, {
   dotfiles: 'deny',
   index: false,
+  setHeaders: (res, filePath) => {
+    if (/\.(?:css|js|html)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  },
 }));
 
 app.use((req, res) => {
