@@ -1,3 +1,13 @@
+@font-face {
+  font-family: "SiteTitleDisplay";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src:
+    local("Marcellus SC"),
+    url("/assets/fonts/MarcellusSC-Regular.ttf") format("truetype");
+}
+
 :root {
   --bg: #17162f;
   --bg-2: #25245a;
@@ -243,8 +253,10 @@ p {
   overflow: visible;
 
   font-family:
+    "SiteTitleDisplay",
     "Marcellus SC",
     "Cinzel",
+    "Noto Serif KR",
     "Raleway",
     serif;
   font-size: 60px;
@@ -253,6 +265,7 @@ p {
   letter-spacing: -0.035em;
   white-space: nowrap;
   text-rendering: geometricPrecision;
+  font-variant: normal;
 
   color: transparent;
   background:
@@ -1782,11 +1795,20 @@ body.is-admin .login-form {
 @media (max-width: 760px) {
   .main-tabs #siteTitle {
     display: block;
+    font-family:
+      "SiteTitleDisplay",
+      "Marcellus SC",
+      "Cinzel",
+      "Noto Serif KR",
+      serif !important;
     font-size: clamp(34px, 10vw, 44px);
+    font-weight: 400;
+    text-transform: uppercase;
     white-space: normal;
     line-height: 1.2;
     padding-bottom: 0.24em;
     overflow: visible;
+    letter-spacing: 0.01em;
     color: #f7f5ff !important;
     background: none !important;
     -webkit-text-fill-color: #f7f5ff !important;
@@ -1807,6 +1829,11 @@ body.is-admin .login-form {
 
   #siteTitle {
     letter-spacing: -0.02em;
+  }
+
+  .intro-card.big h2 {
+    font-size: clamp(26px, 8.4vw, 34px);
+    line-height: 1.16;
   }
 
   .main-tabs {
@@ -1916,7 +1943,7 @@ body.is-admin .login-form {
  
   .typing-heading {
     display: flex;
-    align-items: flex-end;
+    align-items: baseline;
     flex-wrap: wrap;
     column-gap: 6px;
     row-gap: 4px;
@@ -1929,5 +1956,6 @@ body.is-admin .login-form {
 
   .typing-caret {
     display: inline-block;
+    transform: translateY(0.02em);
   }
 }
